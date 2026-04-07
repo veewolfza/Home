@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Ultimate Randomizer Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--bg4:#30363d;
+  --border:#30363d;--border2:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#484f58;
+  --c1:#e52222;--c2:#f5a623;--c3:#3dd68c;--c4:#58a6ff;--c5:#a78bfa;--c6:#f472b6;
+  --sh:0 2px 8px rgba(0,0,0,.35);--sh2:0 4px 16px rgba(0,0,0,.4);
+  --r:6px;--r2:10px;--r3:16px;--tr:all .15s ease;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--bg2:#fff;--bg3:#f6f8fa;--bg4:#e8eaed;
+  --border:#e1e4e8;--border2:#c9cdd4;
+  --text:#1a1a2e;--text2:#57606a;--text3:#b0b8c1;
+  --sh:0 1px 4px rgba(0,0,0,.07);--sh2:0 4px 14px rgba(0,0,0,.1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{font-size:14px;scroll-behavior:smooth;}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;overflow-x:hidden;}
+
+/* TOPBAR */
+#topbar{height:54px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 20px;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.2);}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.logo-icon{width:34px;height:34px;border-radius:var(--r2);background:linear-gradient(135deg,var(--c1),var(--c2));display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:var(--sh);flex-shrink:0;}
+.logo-text{font-size:15px;font-weight:900;letter-spacing:-.3px;color:var(--text);}
+.logo-sub{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.icon-btn{width:34px;height:34px;border-radius:var(--r);background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:var(--tr);flex-shrink:0;user-select:none;}
+.icon-btn:hover{background:var(--bg4);}
+
+/* LAYOUT */
+#app{max-width:960px;margin:0 auto;padding:24px 16px 48px;}
+
+/* SECTION HEADER */
+.section-title{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* ACCORDION */
+.accordion{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r3);margin-bottom:12px;overflow:hidden;box-shadow:var(--sh);transition:box-shadow .2s;}
+.accordion:hover{box-shadow:var(--sh2);}
+.acc-head{display:flex;align-items:center;gap:12px;padding:16px 20px;cursor:pointer;user-select:none;transition:background .15s;}
+.acc-head:hover{background:var(--bg3);}
+.acc-icon{width:38px;height:38px;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.acc-title{font-size:16px;font-weight:800;letter-spacing:-.2px;}
+.acc-sub{font-size:11px;color:var(--text2);font-weight:600;margin-top:1px;font-family:'JetBrains Mono',monospace;}
+.acc-badge{margin-left:auto;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.5px;}
+.acc-chevron{font-size:12px;color:var(--text3);transition:transform .25s;margin-left:8px;flex-shrink:0;}
+.accordion.open .acc-chevron{transform:rotate(180deg);}
+.acc-body{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1);}
+.accordion.open .acc-body{max-height:2000px;}
+.acc-inner{padding:0 20px 20px;}
+
+/* INPUTS */
+.form-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;}
+label{font-size:11px;font-weight:700;color:var(--text2);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:5px;}
+textarea,input[type=number],input[type=text]{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;outline:none;transition:border-color .15s,box-shadow .15s;width:100%;}
+textarea:focus,input:focus{border-color:var(--c4);box-shadow:0 0 0 3px rgba(88,166,255,.12);}
+textarea{resize:vertical;min-height:100px;}
+input[type=number]{width:110px;}
+.field{flex:1;min-width:100px;}
+
+/* BUTTONS */
+.btn{padding:10px 18px;border-radius:var(--r);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;border:none;transition:var(--tr);display:inline-flex;align-items:center;gap:6px;user-select:none;letter-spacing:.2px;white-space:nowrap;}
+.btn:active{transform:translateY(1px);}
+.btn-spin{background:linear-gradient(135deg,var(--c5),var(--c4));color:#fff;box-shadow:0 4px 15px rgba(167,139,250,.3);}
+.btn-spin:hover{filter:brightness(1.1);}
+.btn-dice{background:linear-gradient(135deg,var(--c2),#e07b10);color:#fff;box-shadow:0 4px 15px rgba(245,166,35,.3);}
+.btn-dice:hover{filter:brightness(1.1);}
+.btn-coin{background:linear-gradient(135deg,var(--c3),#28a870);color:#fff;box-shadow:0 4px 15px rgba(61,214,140,.3);}
+.btn-coin:hover{filter:brightness(1.1);}
+.btn-num{background:linear-gradient(135deg,var(--c4),#1a7adf);color:#fff;box-shadow:0 4px 15px rgba(88,166,255,.3);}
+.btn-num:hover{filter:brightness(1.1);}
+.btn-team{background:linear-gradient(135deg,var(--c6),#d44ba0);color:#fff;box-shadow:0 4px 15px rgba(244,114,182,.3);}
+.btn-team:hover{filter:brightness(1.1);}
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border);}
+.btn-ghost:hover{background:var(--bg4);color:var(--text);}
+.btn-sm{padding:6px 12px;font-size:11px;}
+.btn-danger{background:rgba(229,34,34,.15);color:#f87171;border:1px solid rgba(229,34,34,.3);}
+.btn-danger:hover{background:rgba(229,34,34,.25);}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important;filter:none!important;}
+
+/* RESULT BOX */
+.result-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:16px;margin-top:14px;display:flex;align-items:center;gap:12px;min-height:60px;}
+.result-emoji{font-size:28px;animation:pop .3s ease;}
+.result-val{font-size:22px;font-weight:900;letter-spacing:-.5px;flex:1;word-break:break-word;}
+.result-copy{flex-shrink:0;}
+@keyframes pop{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+.result-box.highlight{animation:flashbox .4s ease;}
+@keyframes flashbox{0%,100%{border-color:var(--border)}50%{border-color:var(--c4);box-shadow:0 0 0 3px rgba(88,166,255,.2)}}
+
+/* WHEEL */
+.wheel-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:14px;}
+.wheel-canvas-wrap{position:relative;display:inline-block;}
+#wheel-canvas{border-radius:50%;box-shadow:0 8px 32px rgba(0,0,0,.4);display:block;}
+.wheel-pointer{position:absolute;top:50%;right:-18px;transform:translateY(-50%);font-size:28px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));z-index:5;}
+.wheel-result{text-align:center;}
+
+/* DICE */
+.dice-wrap{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap;justify-content:center;}
+.dice{width:70px;height:70px;background:var(--bg3);border:2px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:36px;box-shadow:var(--sh2);transition:transform .1s;}
+.dice.rolling{animation:diceroll .5s ease;}
+@keyframes diceroll{0%{transform:rotate(0) scale(.8)}30%{transform:rotate(180deg) scale(1.15)}60%{transform:rotate(320deg) scale(.95)}100%{transform:rotate(360deg) scale(1)}}
+
+/* COIN */
+.coin-wrap{display:flex;justify-content:center;margin-top:14px;}
+.coin{width:110px;height:110px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:52px;box-shadow:var(--sh2),inset 0 0 20px rgba(255,255,255,.05);transition:transform .1s;border:3px solid var(--border2);position:relative;}
+.coin.heads{background:radial-gradient(circle at 35% 35%,#ffd700,#c8a000);}
+.coin.tails{background:radial-gradient(circle at 35% 35%,#c0c0c0,#888);}
+.coin.flipping{animation:coinflip .6s ease;}
+@keyframes coinflip{0%{transform:rotateY(0)}25%{transform:rotateY(90deg) scale(.8)}50%{transform:rotateY(180deg)}75%{transform:rotateY(270deg) scale(.8)}100%{transform:rotateY(360deg)}}
+
+/* TEAMS */
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:14px;}
+.team-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:12px;animation:fadein .3s ease;}
+.team-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:'JetBrains Mono',monospace;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.team-member{font-size:13px;font-weight:700;padding:4px 0;display:flex;align-items:center;gap:6px;}
+.team-member::before{content:'👤';font-size:12px;}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* HISTORY */
+.history-list{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:320px;overflow-y:auto;}
+.history-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:12px;animation:fadein .2s ease;}
+.h-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;flex-shrink:0;}
+.h-val{flex:1;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.h-time{color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:10px;flex-shrink:0;}
+.history-list::-webkit-scrollbar{width:4px;}
+.history-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.empty-state{text-align:center;color:var(--text3);padding:24px;font-size:13px;font-weight:600;}
+
+/* DICE CONTROLS */
+.dice-count-wrap{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.dice-count-wrap label{margin:0;}
+.dice-count-btn{width:30px;height:30px;border-radius:var(--r);background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:var(--tr);font-weight:900;user-select:none;}
+.dice-count-btn:hover{background:var(--bg4);}
+.dice-count-val{font-size:18px;font-weight:900;min-width:24px;text-align:center;}
+
+/* TOAST */
+#toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:999;}
+.toast{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:10px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;box-shadow:var(--sh2);animation:toastin .2s ease;max-width:300px;}
+.toast.success{border-color:rgba(61,214,140,.4);background:rgba(61,214,140,.08);}
+.toast.error{border-color:rgba(229,34,34,.4);background:rgba(229,34,34,.08);}
+@keyframes toastin{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* COLORS per feature */
+.acc1 .acc-icon{background:rgba(167,139,250,.15);color:var(--c5);}
+.acc1 .acc-badge{background:rgba(167,139,250,.15);color:var(--c5);}
+.acc2 .acc-icon{background:rgba(245,166,35,.15);color:var(--c2);}
+.acc2 .acc-badge{background:rgba(245,166,35,.15);color:var(--c2);}
+.acc3 .acc-icon{background:rgba(61,214,140,.15);color:var(--c3);}
+.acc3 .acc-badge{background:rgba(61,214,140,.15);color:var(--c3);}
+.acc4 .acc-icon{background:rgba(88,166,255,.15);color:var(--c4);}
+.acc4 .acc-badge{background:rgba(88,166,255,.15);color:var(--c4);}
+.acc5 .acc-icon{background:rgba(244,114,182,.15);color:var(--c6);}
+.acc5 .acc-badge{background:rgba(244,114,182,.15);color:var(--c6);}
+.acc6 .acc-icon{background:rgba(229,34,34,.15);color:var(--c1);}
+.acc6 .acc-badge{background:rgba(229,34,34,.15);color:var(--c1);}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:12px 0;}
+
+/* SPIN RESULT */
+.spin-result-text{font-size:24px;font-weight:900;text-align:center;margin-top:8px;min-height:36px;animation:pop .3s ease;}
+
+/* NUMBER RESULT */
+.num-result{font-size:64px;font-weight:900;text-align:center;letter-spacing:-3px;background:linear-gradient(135deg,var(--c4),var(--c5));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;padding:12px 0;animation:pop .3s ease;}
+
+/* UTIL */
+.mt8{margin-top:8px;}
+.mt12{margin-top:12px;}
+.flex-gap{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.w100{width:100%;}
+
+/* Responsive */
+@media(max-width:600px){
+  #app{padding:16px 10px 48px;}
+  .acc-head{padding:14px 14px;}
+  .acc-inner{padding:0 14px 14px;}
+  .num-result{font-size:48px;}
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <a class="logo" href="#">
+    <div class="logo-icon">🎲</div>
+    <div>
+      <div class="logo-text">Ultimate Randomizer</div>
+      <div class="logo-sub">All-in-One Tool</div>
+    </div>
+  </a>
+  <div class="topbar-right">
+    <div class="icon-btn" onclick="toggleTheme()" title="Toggle theme" id="theme-btn">🌙</div>
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- ① SPIN WHEEL -->
+  <div class="accordion acc1 open" id="acc-wheel">
+    <div class="acc-head" onclick="toggleAcc('acc-wheel')">
+      <div class="acc-icon">🎡</div>
+      <div>
+        <div class="acc-title">Random Picker</div>
+        <div class="acc-sub">Spin the wheel of fortune</div>
+      </div>
+      <div class="acc-badge">WHEEL</div>
+      <div class="acc-chevron">▼</div>
+    </div>
+    <div class="acc-body">
+      <div class="acc-inner">
+        <div class="form-row">
+          <div style="flex:1">
+            <label>Items (one per line)</label>
+            <textarea id="wheel-input" placeholder="Pizza&#10;Burger&#10;Sushi&#10;Tacos&#10;Pasta">Pizza
+Burger
+Sushi
+Tacos
+Pasta
+Ramen
+Steak
+Salad</textarea>
+          </div>
+        </div>
+        <div class="flex-gap">
+          <button class="btn btn-spin" onclick="spinWheel()">🎡 Spin!</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadSampleWheel()">Load Samples</button>
+        </div>
+        <div class="wheel-wrap">
+          <div class="wheel-canvas-wrap">
+            <canvas id="wheel-canvas" width="280" height="280"></canvas>
+            <div class="wheel-pointer">👉</div>
+          </div>
+          <div class="spin-result-text" id="wheel-result-text">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② DICE ROLLER -->
+  <div class="accordion acc2" id="acc-dice">
+    <div class="acc-head" onclick="toggleAcc('acc-dice')">
+      <div class="acc-icon">🎲</div>
+      <div>
+        <div class="acc-title">Dice Roller</div>
+        <div class="acc-sub">Roll up to 6 dice at once</div>
+      </div>
+      <div class="acc-badge">DICE</div>
+      <div class="acc-chevron">▼</div>
+    </div>
+    <div class="acc-body">
+      <div class="acc-inner">
+        <div class="dice-count-wrap">
+          <label>Number of dice:</label>
+          <div class="dice-count-btn" onclick="changeDiceCount(-1)">−</div>
+          <div class="dice-count-val" id="dice-count-val">2</div>
+          <div class="dice-count-btn" onclick="changeDiceCount(1)">+</div>
+        </div>
+        <div class="flex-gap">
+          <button class="btn btn-dice" onclick="rollDice()">🎲 Roll Dice</button>
+        </div>
+        <div class="dice-wrap" id="dice-display"></div>
+        <div id="dice-result-box" style="display:none" class="result-box mt12">
+          <div class="result-emoji">🎲</div>
+          <div>
+            <div style="font-size:12px;color:var(--text2);font-weight:700;font-family:'JetBrains Mono',monospace;text-transform:uppercase;margin-bottom:2px">Total</div>
+            <div class="result-val" id="dice-total">—</div>
+          </div>
+          <button class="btn btn-ghost btn-sm result-copy" onclick="copyResult(document.getElementById('dice-total').textContent)">📋 Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ COIN FLIP -->
+  <div class="accordion acc3" id="acc-coin">
+    <div class="acc-head" onclick="toggleAcc('acc-coin')">
+      <div class="acc-icon">🪙</div>
+      <div>
+        <div class="acc-title">Coin Flip</div>
+        <div class="acc-sub">Heads or Tails?</div>
+      </div>
+      <div class="acc-badge">COIN</div>
+      <div class="acc-chevron">▼</div>
+    </div>
+    <div class="acc-body">
+      <div class="acc-inner">
+        <div class="flex-gap">
+          <button class="btn btn-coin" onclick="flipCoin()">🪙 Flip Coin</button>
+        </div>
+        <div class="coin-wrap mt12">
+          <div class="coin" id="coin-display">🪙</div>
+        </div>
+        <div id="coin-result-box" style="display:none" class="result-box mt12">
+          <div class="result-emoji" id="coin-emoji">🪙</div>
+          <div class="result-val" id="coin-result">—</div>
+          <button class="btn btn-ghost btn-sm result-copy" onclick="copyResult(document.getElementById('coin-result').textContent)">📋 Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ NUMBER GENERATOR -->
+  <div class="accordion acc4" id="acc-num">
+    <div class="acc-head" onclick="toggleAcc('acc-num')">
+      <div class="acc-icon">🔢</div>
+      <div>
+        <div class="acc-title">Number Generator</div>
+        <div class="acc-sub">Random number in a range</div>
+      </div>
+      <div class="acc-badge">RNG</div>
+      <div class="acc-chevron">▼</div>
+    </div>
+    <div class="acc-body">
+      <div class="acc-inner">
+        <div class="form-row">
+          <div class="field">
+            <label>Min</label>
+            <input type="number" id="num-min" value="1" min="-999999" max="999999">
+          </div>
+          <div class="field">
+            <label>Max</label>
+            <input type="number" id="num-max" value="100" min="-999999" max="999999">
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn btn-num" onclick="generateNumber()">🔢 Generate</button>
+          </div>
+        </div>
+        <div id="num-result" class="num-result" style="display:none">—</div>
+        <div id="num-copy-wrap" style="display:none;text-align:center;margin-top:8px">
+          <button class="btn btn-ghost btn-sm" onclick="copyResult(document.getElementById('num-result').textContent)">📋 Copy Result</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑤ TEAM GENERATOR -->
+  <div class="accordion acc5" id="acc-team">
+    <div class="acc-head" onclick="toggleAcc('acc-team')">
+      <div class="acc-icon">👥</div>
+      <div>
+        <div class="acc-title">Team Generator</div>
+        <div class="acc-sub">Split people into random teams</div>
+      </div>
+      <div class="acc-badge">TEAMS</div>
+      <div class="acc-chevron">▼</div>
+    </div>
+    <div class="acc-body">
+      <div class="acc-inner">
+        <div class="form-row">
+          <div style="flex:1">
+            <label>Names (one per line)</label>
+            <textarea id="team-input" placeholder="Alice&#10;Bob&#10;Charlie...">Alice
+Bob
+Charlie
+Diana
+Eve
+Frank
+Grace
+Henry</textarea>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Number of teams</label>
+            <input type="number" id="team-count" value="2" min="2" max="20">
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn btn-team" onclick="generateTeams()">👥 Generate Teams</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn btn-ghost btn-sm" onclick="loadSampleTeam()">Samples</button>
+          </div>
+        </div>
+        <div class="teams-grid" id="teams-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ HISTORY -->
+  <div class="accordion acc6" id="acc-history">
+    <div class="acc-head" onclick="toggleAcc('acc-history')">
+      <div class="acc-icon">📜</div>
+      <div>
+        <div class="acc-title">History</div>
+        <div class="acc-sub">Last 10 results across all features</div>
+      </div>
+      <div class="acc-badge" id="history-badge">0</div>
+      <div class="acc-chevron">▼</div>
+    </div>
+    <div class="acc-body">
+      <div class="acc-inner">
+        <div class="flex-gap mt8">
+          <button class="btn btn-danger btn-sm" onclick="clearHistory()">🗑️ Clear History</button>
+        </div>
+        <div class="history-list mt12" id="history-list">
+          <div class="empty-state">No history yet. Start randomizing!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toasts"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+var diceCount = 2;
+var isSpinning = false;
+var wheelAngle = 0;
+var history = [];
+var DICE_FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+var COLORS_WHEEL = [
+  '#a78bfa','#58a6ff','#3dd68c','#f5a623','#f472b6','#e52222',
+  '#60a5fa','#34d399','#fbbf24','#f87171','#c084fc','#38bdf8'
+];
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.onload = function(){
+  loadState();
+  drawWheel();
+  renderDice([1,2]);
+  renderHistory();
+  updateHistoryBadge();
+};
+
+// ─── LOCAL STORAGE ───────────────────────────────────────────────────────────
+function saveState(){
+  try{
+    localStorage.setItem('ur_history', JSON.stringify(history));
+    localStorage.setItem('ur_wheel_items', document.getElementById('wheel-input').value);
+    localStorage.setItem('ur_team_items', document.getElementById('team-input').value);
+    localStorage.setItem('ur_num_min', document.getElementById('num-min').value);
+    localStorage.setItem('ur_num_max', document.getElementById('num-max').value);
+    localStorage.setItem('ur_dice_count', diceCount);
+  }catch(e){}
+}
+
+function loadState(){
+  try{
+    var h = localStorage.getItem('ur_history');
+    if(h) history = JSON.parse(h);
+    var wi = localStorage.getItem('ur_wheel_items');
+    if(wi) document.getElementById('wheel-input').value = wi;
+    var ti = localStorage.getItem('ur_team_items');
+    if(ti) document.getElementById('team-input').value = ti;
+    var nmin = localStorage.getItem('ur_num_min');
+    if(nmin) document.getElementById('num-min').value = nmin;
+    var nmax = localStorage.getItem('ur_num_max');
+    if(nmax) document.getElementById('num-max').value = nmax;
+    var dc = localStorage.getItem('ur_dice_count');
+    if(dc){ diceCount = parseInt(dc); document.getElementById('dice-count-val').textContent = diceCount; }
+  }catch(e){}
+}
+
+// ─── ACCORDION ────────────────────────────────────────────────────────────────
+function toggleAcc(id){
+  var el = document.getElementById(id);
+  el.classList.toggle('open');
+}
+
+// ─── HISTORY ──────────────────────────────────────────────────────────────────
+var BADGE_COLORS = {
+  'WHEEL':'rgba(167,139,250,.8)',
+  'DICE':'rgba(245,166,35,.8)',
+  'COIN':'rgba(61,214,140,.8)',
+  'RNG':'rgba(88,166,255,.8)',
+  'TEAMS':'rgba(244,114,182,.8)'
+};
+
+function addHistory(type, value){
+  history.unshift({type:type, value:value, time:new Date().toLocaleTimeString()});
+  if(history.length > 10) history.pop();
+  renderHistory();
+  updateHistoryBadge();
+  saveState();
+}
+
+function renderHistory(){
+  var el = document.getElementById('history-list');
+  if(!history.length){
+    el.innerHTML = '<div class="empty-state">No history yet. Start randomizing!</div>';
+    return;
+  }
+  el.innerHTML = history.map(function(h){
+    var bg = BADGE_COLORS[h.type] || 'rgba(88,166,255,.8)';
+    return '<div class="history-item">'
+      +'<span class="h-badge" style="background:'+bg+';color:#fff">'+h.type+'</span>'
+      +'<span class="h-val">'+escH(String(h.value))+'</span>'
+      +'<span class="h-time">'+h.time+'</span>'
+      +'<button class="btn btn-ghost btn-sm" style="padding:3px 8px;font-size:10px" onclick="copyResult(\''+escAttr(String(h.value))+'\')">📋</button>'
+      +'</div>';
+  }).join('');
+}
+
+function updateHistoryBadge(){
+  document.getElementById('history-badge').textContent = history.length;
+}
+
+function clearHistory(){
+  history = [];
+  renderHistory();
+  updateHistoryBadge();
+  saveState();
+  toast('History cleared','info');
+}
+
+// ─── WHEEL ────────────────────────────────────────────────────────────────────
+function getWheelItems(){
+  return document.getElementById('wheel-input').value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+}
+
+function drawWheel(highlightIdx){
+  var canvas = document.getElementById('wheel-canvas');
+  var ctx = canvas.getContext('2d');
+  var items = getWheelItems();
+  var w = canvas.width, h = canvas.height, cx = w/2, cy = h/2, r = Math.min(w,h)/2 - 6;
+  ctx.clearRect(0,0,w,h);
+  if(!items.length){
+    ctx.fillStyle = 'rgba(88,166,255,.2)';
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#8b949e';
+    ctx.font = 'bold 13px Nunito';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Add items above', cx, cy);
+    return;
+  }
+  var arc = (Math.PI*2) / items.length;
+  items.forEach(function(item, i){
+    var start = wheelAngle + i*arc, end = start + arc;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,start,end);
+    ctx.closePath();
+    ctx.fillStyle = i === highlightIdx ? '#fff' : COLORS_WHEEL[i % COLORS_WHEEL.length];
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.25)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.rotate(start + arc/2);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = i === highlightIdx ? '#1a1a2e' : '#fff';
+    ctx.font = 'bold '+(items.length > 10 ? '11' : '13')+'px Nunito';
+    ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 2;
+    var maxLen = 14;
+    var label = item.length > maxLen ? item.substring(0,maxLen)+'…' : item;
+    ctx.fillText(label, r - 10, 0);
+    ctx.restore();
+  });
+  // center circle
+  ctx.beginPath();
+  ctx.arc(cx,cy,18,0,Math.PI*2);
+  ctx.fillStyle = '#0d1117';
+  ctx.fill();
+  ctx.strokeStyle = '#30363d';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#e6edf3';
+  ctx.font = 'bold 14px Nunito';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('★', cx, cy);
+}
+
+function spinWheel(){
+  if(isSpinning) return;
+  var items = getWheelItems();
+  if(!items.length){ toast('Please add at least one item!','error'); return; }
+  if(items.length < 2){ toast('Please add at least 2 items for a fun spin!','error'); return; }
+  isSpinning = true;
+  document.getElementById('wheel-result-text').textContent = '⏳ Spinning…';
+  var totalSpins = 5 + Math.random()*5;
+  var totalAngle = totalSpins * Math.PI * 2;
+  var duration = 3000 + Math.random()*1000;
+  var start = null;
+  var startAngle = wheelAngle;
+  function ease(t){ return t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+  function animate(ts){
+    if(!start) start = ts;
+    var elapsed = ts - start;
+    var progress = Math.min(elapsed/duration, 1);
+    wheelAngle = startAngle + totalAngle * ease(progress);
+    drawWheel();
+    if(progress < 1){ requestAnimationFrame(animate); }
+    else {
+      var arc = (Math.PI*2) / items.length;
+      // pointer is at right side (angle=0), determine which segment is there
+      var norm = ((wheelAngle % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+      var selected = items.length - 1 - Math.floor(norm / arc);
+      selected = ((selected % items.length) + items.length) % items.length;
+      drawWheel(selected);
+      var result = items[selected];
+      document.getElementById('wheel-result-text').textContent = '🎉 ' + result;
+      addHistory('WHEEL', result);
+      isSpinning = false;
+      toast('🎡 Result: '+result,'success');
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+document.getElementById('wheel-input').addEventListener('input', function(){ if(!isSpinning){ drawWheel(); saveState(); } });
+
+function loadSampleWheel(){
+  document.getElementById('wheel-input').value = 'Pizza\nBurger\nSushi\nTacos\nPasta\nRamen\nSteak\nSalad\nHot Dog\nSandwich';
+  drawWheel();
+  toast('Sample items loaded','info');
+}
+
+// ─── DICE ─────────────────────────────────────────────────────────────────────
+function changeDiceCount(delta){
+  diceCount = Math.max(1, Math.min(6, diceCount + delta));
+  document.getElementById('dice-count-val').textContent = diceCount;
+  renderDice(Array.from({length:diceCount},function(){return Math.ceil(Math.random()*6);}));
+  saveState();
+}
+
+function renderDice(values){
+  document.getElementById('dice-display').innerHTML = values.map(function(v){
+    return '<div class="dice">'+DICE_FACES[v-1]+'</div>';
+  }).join('');
+}
+
+function rollDice(){
+  var diceEls = document.querySelectorAll('#dice-display .dice');
+  diceEls.forEach(function(d){ d.classList.add('rolling'); });
+  setTimeout(function(){
+    var results = Array.from({length:diceCount},function(){return Math.ceil(Math.random()*6);});
+    renderDice(results);
+    var total = results.reduce(function(a,b){return a+b;},0);
+    var box = document.getElementById('dice-result-box');
+    box.style.display = 'flex';
+    box.classList.remove('highlight'); void box.offsetWidth; box.classList.add('highlight');
+    document.getElementById('dice-total').textContent = total + ' ('+results.join(', ')+')';
+    addHistory('DICE', total + ' — '+results.map(function(v){return DICE_FACES[v-1];}).join(' '));
+    toast('🎲 Total: '+total,'success');
+  }, 500);
+}
+
+// ─── COIN ─────────────────────────────────────────────────────────────────────
+function flipCoin(){
+  var coin = document.getElementById('coin-display');
+  coin.classList.remove('flipping','heads','tails');
+  void coin.offsetWidth;
+  coin.classList.add('flipping');
+  coin.textContent = '🪙';
+  setTimeout(function(){
+    var heads = Math.random() < .5;
+    coin.classList.remove('flipping');
+    coin.classList.add(heads ? 'heads' : 'tails');
+    coin.textContent = heads ? '👑' : '💰';
+    var result = heads ? 'Heads 👑' : 'Tails 💰';
+    var box = document.getElementById('coin-result-box');
+    box.style.display = 'flex';
+    box.classList.remove('highlight'); void box.offsetWidth; box.classList.add('highlight');
+    document.getElementById('coin-result').textContent = result;
+    document.getElementById('coin-emoji').textContent = heads ? '👑' : '💰';
+    addHistory('COIN', result);
+    toast('🪙 It\'s '+result,'success');
+  }, 650);
+}
+
+// ─── NUMBER GENERATOR ─────────────────────────────────────────────────────────
+function generateNumber(){
+  var minEl = document.getElementById('num-min');
+  var maxEl = document.getElementById('num-max');
+  var min = parseInt(minEl.value);
+  var max = parseInt(maxEl.value);
+  if(isNaN(min)||isNaN(max)){toast('Please enter valid numbers!','error');return;}
+  if(min >= max){toast('Min must be less than Max!','error');minEl.style.borderColor='var(--c1)';setTimeout(function(){minEl.style.borderColor='';},1500);return;}
+  var result = Math.floor(Math.random()*(max-min+1))+min;
+  var el = document.getElementById('num-result');
+  el.style.display = 'block';
+  el.style.opacity = '0'; el.style.transform = 'scale(.7)';
+  el.textContent = result;
+  requestAnimationFrame(function(){
+    el.style.transition = 'opacity .25s, transform .25s cubic-bezier(.34,1.56,.64,1)';
+    el.style.opacity = '1'; el.style.transform = 'scale(1)';
+  });
+  document.getElementById('num-copy-wrap').style.display = 'block';
+  addHistory('RNG', result + ' ('+min+'–'+max+')');
+  toast('🔢 Generated: '+result,'success');
+  saveState();
+}
+
+// ─── TEAM GENERATOR ───────────────────────────────────────────────────────────
+var TEAM_COLORS = ['var(--c5)','var(--c4)','var(--c3)','var(--c2)','var(--c6)','var(--c1)','#60a5fa','#34d399','#fbbf24'];
+
+function generateTeams(){
+  var names = document.getElementById('team-input').value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+  var teamCount = parseInt(document.getElementById('team-count').value);
+  if(!names.length){toast('Please add at least one name!','error');return;}
+  if(isNaN(teamCount)||teamCount<2){toast('Need at least 2 teams!','error');return;}
+  if(teamCount > names.length){toast('More teams than people! Reducing teams to '+names.length,'error');teamCount=names.length;}
+  var shuffled = shuffle(names.slice());
+  var teams = Array.from({length:teamCount},function(){return [];});
+  shuffled.forEach(function(name,i){ teams[i%teamCount].push(name); });
+  var output = document.getElementById('teams-output');
+  output.innerHTML = teams.map(function(members,i){
+    var color = TEAM_COLORS[i % TEAM_COLORS.length];
+    return '<div class="team-card" style="animation-delay:'+(i*0.05)+'s">'
+      +'<div class="team-title" style="color:'+color+'">Team '+(i+1)+' <span style="color:var(--text3)">('+members.length+')</span></div>'
+      +members.map(function(m){return '<div class="team-member">'+escH(m)+'</div>';}).join('')
+      +'</div>';
+  }).join('');
+  var summary = 'Teams: '+teams.map(function(t,i){return 'Team '+(i+1)+': '+t.join(', ');}).join(' | ');
+  addHistory('TEAMS', summary);
+  toast('👥 '+teamCount+' teams generated!','success');
+  saveState();
+}
+
+function loadSampleTeam(){
+  document.getElementById('team-input').value = 'Alice\nBob\nCharlie\nDiana\nEve\nFrank\nGrace\nHenry\nIvan\nJulia';
+  document.getElementById('team-count').value = 3;
+  toast('Sample names loaded','info');
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function shuffle(arr){
+  for(var i=arr.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1));
+    var tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp;
+  }
+  return arr;
+}
+
+function copyResult(text){
+  if(!text||text==='—') return;
+  navigator.clipboard.writeText(text).then(function(){
+    toast('📋 Copied: '+text.substring(0,30)+(text.length>30?'…':''),'success');
+  }).catch(function(){
+    toast('Copy failed','error');
+  });
+}
+
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escAttr(s){return String(s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');}
+
+// ─── THEME ────────────────────────────────────────────────────────────────────
+function toggleTheme(){
+  var h = document.documentElement;
+  var isDark = h.dataset.theme !== 'light';
+  h.dataset.theme = isDark ? 'light' : 'dark';
+  document.getElementById('theme-btn').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('ur_theme', h.dataset.theme);
+  setTimeout(drawWheel, 50);
+}
+(function(){
+  var t = localStorage.getItem('ur_theme');
+  if(t){
+    document.documentElement.dataset.theme = t;
+    document.getElementById('theme-btn').textContent = t==='light'?'☀️':'🌙';
+  }
+})();
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function toast(msg, type){
+  type = type||'info';
+  var icons = {success:'✅',error:'❌',info:'ℹ️',warn:'⚠️'};
+  var d = document.createElement('div');
+  d.className = 'toast '+(type==='success'?'success':type==='error'?'error':'');
+  d.innerHTML = '<span>'+(icons[type]||'•')+'</span><span>'+escH(msg)+'</span>';
+  document.getElementById('toasts').appendChild(d);
+  setTimeout(function(){
+    d.style.transition='opacity .3s,transform .3s';
+    d.style.opacity='0'; d.style.transform='translateX(20px)';
+    setTimeout(function(){d.remove();},300);
+  }, 3000);
+}
+</script>
+</body>
+</html>
