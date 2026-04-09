@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pokédex & Type Checker — Legends Z-A</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Saira+Condensed:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0c12;--surface:#111520;--surface2:#181d2e;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);
+  --text:#e8eaf2;--muted:#6b7194;--accent:#5b8eff;--accent2:#a78bfa;
+  --Normal:#9da0a8;--Fire:#ff6b35;--Water:#4fa3e8;--Electric:#f5c518;
+  --Grass:#5ec44a;--Ice:#7dd8d4;--Fighting:#c84b25;--Poison:#a96bc4;
+  --Ground:#d4934a;--Flying:#89a9f5;--Psychic:#f5567c;--Bug:#8db832;
+  --Rock:#b5a86a;--Ghost:#6660b0;--Dragon:#4b6ee8;--Dark:#6b67a8;
+  --Steel:#a8b8c8;--Fairy:#e882b0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(91,142,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(91,142,255,0.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+/* NAV TABS */
+.nav-tabs{position:sticky;top:0;z-index:100;background:rgba(10,12,18,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border2);display:flex;justify-content:center;gap:0}
+.nav-tab{flex:1;max-width:200px;padding:14px 8px;text-align:center;font-family:'Saira Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;user-select:none}
+.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.nav-tab:hover:not(.active){color:var(--text)}
+
+.page{display:none;position:relative;z-index:1;padding:20px 16px 80px;max-width:900px;margin:0 auto}
+.page.active{display:block}
+
+/* SHARED HEADER */
+.page-header{text-align:center;margin-bottom:24px;padding-top:8px}
+.header-tag{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px}
+.page-title{font-family:'Saira Condensed',sans-serif;font-size:clamp(28px,8vw,48px);font-weight:900;letter-spacing:-1px;line-height:1;color:#fff;text-transform:uppercase}
+.page-title span{color:var(--accent)}
+.page-sub{font-size:13px;color:var(--muted);margin-top:6px}
+
+/* ============ POKEDEX PAGE ============ */
+.search-wrap{position:relative;margin-bottom:16px}
+.search-input{width:100%;background:var(--surface);border:1.5px solid var(--border2);border-radius:12px;padding:12px 16px 12px 44px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:16px;outline:none;transition:border-color .2s}
+.search-input:focus{border-color:var(--accent)}
+.search-input::placeholder{color:var(--muted)}
+.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px;pointer-events:none}
+.search-count{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+
+/* Filter pills */
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.filter-pill{padding:5px 12px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:.5px;cursor:pointer;border:1.5px solid transparent;transition:all .15s;text-transform:uppercase;user-select:none}
+.filter-pill.active{border-color:rgba(255,255,255,.5)}
+.filter-pill:hover{transform:scale(1.05)}
+.filter-all{background:var(--surface2);border-color:var(--border2)!important;color:var(--text)}
+.filter-all.active{border-color:var(--accent)!important;color:var(--accent)}
+
+/* Pokemon list */
+.poke-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+@media(max-width:480px){.poke-grid{grid-template-columns:repeat(2,1fr);gap:8px}}
+
+.poke-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 10px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden;text-align:center}
+.poke-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .2s}
+.poke-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.poke-card:hover::before{opacity:.06}
+.poke-card.selected{border-color:var(--accent);background:rgba(91,142,255,.08)}
+
+.poke-num{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:4px}
+.poke-sprite{width:72px;height:72px;object-fit:contain;image-rendering:pixelated;margin:0 auto 4px;display:block}
+.poke-sprite-fallback{width:72px;height:72px;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:36px;opacity:.4}
+.poke-name{font-family:'Saira Condensed',sans-serif;font-size:15px;font-weight:700;text-transform:capitalize;margin-bottom:6px;letter-spacing:.3px}
+.poke-types{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+.mini-badge{padding:2px 8px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+
+/* Selected Pokemon detail */
+.poke-detail{background:var(--surface);border:1.5px solid var(--border2);border-radius:16px;padding:18px;margin-bottom:16px;display:none;animation:fadeUp .25s ease}
+.poke-detail.show{display:block}
+.detail-inner{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.detail-left{flex:0 0 auto;text-align:center}
+.detail-left img{width:100px;height:100px;object-fit:contain;image-rendering:pixelated}
+.detail-right{flex:1;min-width:180px}
+.detail-name{font-family:'Saira Condensed',sans-serif;font-size:28px;font-weight:900;text-transform:capitalize;line-height:1}
+.detail-num{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:8px}
+.detail-types{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.detail-badge{padding:5px 14px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.send-checker-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:'Saira Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .15s;text-transform:uppercase}
+.send-checker-btn:hover{background:#4070ee;transform:scale(1.03)}
+
+.detail-matchup{margin-top:12px}
+.match-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.match-box{border-radius:10px;padding:8px 10px;border:1px solid var(--border)}
+.match-box-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.5px;margin-bottom:6px;text-transform:uppercase}
+.match-chips{display:flex;flex-wrap:wrap;gap:3px}
+.m-chip{padding:2px 7px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase}
+.no-results{text-align:center;padding:48px 0;color:var(--muted)}
+.no-results .nr-icon{font-size:40px;margin-bottom:10px;opacity:.3}
+
+/* ============ TYPE CHECKER PAGE ============ */
+.tip-bar{background:rgba(91,142,255,.08);border:1px solid rgba(91,142,255,.2);border-radius:10px;padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);margin-bottom:16px;letter-spacing:.5px;line-height:1.5}
+
+.drop-layout{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:480px){.drop-layout{grid-template-columns:1fr}}
+
+.drop-area{background:var(--surface);border:1.5px dashed var(--border2);border-radius:16px;padding:14px;min-height:110px;transition:all .2s;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.drop-area.drag-over,.drop-area.pending{border-color:var(--accent);background:rgba(91,142,255,.07)}
+.drop-area-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.drop-slot{min-height:60px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px}
+.drop-empty{font-size:13px;color:var(--muted);text-align:center;line-height:1.6;pointer-events:none}
+.drop-empty .ei{display:block;font-size:22px;margin-bottom:4px;opacity:.35}
+.slot-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:18px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:transform .15s;text-transform:uppercase}
+.slot-badge:hover{transform:scale(1.05)}
+.rm-btn{font-size:14px;opacity:.7;line-height:1;padding:0 2px}
+.rm-btn:hover{opacity:1}
+
+.palette-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:16px}
+.palette-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.type-palette{display:flex;flex-wrap:wrap;gap:6px}
+.type-pill{padding:6px 13px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:.5px;cursor:pointer;user-select:none;transition:transform .12s,box-shadow .12s,opacity .15s;text-transform:uppercase;border:2px solid transparent;-webkit-tap-highlight-color:transparent}
+.type-pill:hover{transform:translateY(-2px) scale(1.06);box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.type-pill:active{transform:scale(.96)}
+.type-pill.dragging{opacity:.3}
+.type-pill.selected{border-color:rgba(255,255,255,.6);box-shadow:0 0 0 2px rgba(255,255,255,.18)}
+
+.results-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px}
+.results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.results-title{font-family:'Saira Condensed',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.clear-btn{background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;letter-spacing:1px}
+.clear-btn:hover{border-color:var(--text);color:var(--text)}
+
+.result-placeholder{text-align:center;padding:36px 0;color:var(--muted);font-size:14px}
+.result-placeholder .rp-icon{font-size:34px;margin-bottom:10px;opacity:.25;display:block}
+.result-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+@media(max-width:400px){.result-grid{grid-template-columns:1fr 1fr}}
+
+.result-cat{border-radius:12px;padding:10px 12px;border:1px solid var(--border);animation:fadeUp .2s ease forwards}
+.result-cat-title{font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.result-cat-title .mult{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500}
+.result-chips{display:flex;flex-wrap:wrap;gap:4px}
+.r-chip{padding:3px 9px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.empty-cat{font-size:12px;color:var(--muted);font-style:italic}
+.combo-display{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.combo-plus{font-size:20px;color:var(--muted)}
+
+.cat-4x{background:rgba(226,75,74,.1);border-color:rgba(226,75,74,.32)}
+.cat-4x .result-cat-title{color:#ff6b6a}
+.cat-2x{background:rgba(239,159,39,.08);border-color:rgba(239,159,39,.28)}
+.cat-2x .result-cat-title{color:#f5a832}
+.cat-half{background:rgba(93,202,165,.08);border-color:rgba(93,202,165,.28)}
+.cat-half .result-cat-title{color:#5dcaa5}
+.cat-quarter{background:rgba(97,196,89,.1);border-color:rgba(97,196,89,.35)}
+.cat-quarter .result-cat-title{color:#97c459}
+.cat-0x{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.14)}
+.cat-0x .result-cat-title{color:#888}
+.cat-1x .result-cat-title{color:var(--muted)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<nav class="nav-tabs">
+  <div class="nav-tab active" onclick="switchTab('dex')">📖 Pokédex</div>
+  <div class="nav-tab" onclick="switchTab('checker')">⚔️ Type Checker</div>
+</nav>
+
+<!-- ============ POKÉDEX PAGE ============ -->
+<div class="page active" id="page-dex">
+  <div class="page-header">
+    <div class="header-tag">National · Gen I–IX</div>
+    <div class="page-title">Pokédex <span>Search</span></div>
+    <div class="page-sub">ค้นหา Pokemon และดู Type + Weakness ได้เลย</div>
+  </div>
+
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="dex-search" type="text" placeholder="พิมชื่อหรือเลข Pokémon เช่น Pikachu, 25..." oninput="onSearch()" autocomplete="off" spellcheck="false">
+    <span class="search-count" id="search-count"></span>
+  </div>
+
+  <div class="filter-row" id="type-filters">
+    <div class="filter-pill filter-all active" onclick="setTypeFilter('',this)">All</div>
+  </div>
+
+  <!-- Selected detail panel -->
+  <div class="poke-detail" id="poke-detail"></div>
+
+  <div class="poke-grid" id="poke-grid"></div>
+  <div class="no-results" id="no-results" style="display:none">
+    <div class="nr-icon">🔭</div>
+    ไม่พบ Pokémon ที่ค้นหา
+  </div>
+</div>
+
+<!-- ============ TYPE CHECKER PAGE ============ -->
+<div class="page" id="page-checker">
+  <div class="page-header">
+    <div class="header-tag">Legends Z-A · Type Matchup</div>
+    <div class="page-title">Type <span>Checker</span></div>
+    <div class="page-sub">Drag & Drop หรือ Tap เพื่อเลือก Type · รองรับ Dual-Type</div>
+  </div>
+
+  <div class="tip-bar">
+    💡 <strong>วิธีใช้:</strong> ลาก type มาวางในช่อง หรือ กดที่ช่องก่อน แล้วค่อยกด type ที่ต้องการ · กด ✕ บน badge เพื่อลบออก
+  </div>
+
+  <div class="drop-layout">
+    <div class="drop-area" id="slot1" ondragover="oDO(event)" ondragleave="oDL(event)" ondrop="oDP(event,1)" onclick="onSlotClick(1)">
+      <div class="drop-area-label">Type 1</div>
+      <div class="drop-slot" id="slot1-content">
+        <div class="drop-empty"><span class="ei">⬡</span>ลาก type มาวางที่นี่<br>หรือกดเพื่อเลือก</div>
+      </div>
+    </div>
+    <div class="drop-area" id="slot2" ondragover="oDO(event)" ondragleave="oDL(event)" ondrop="oDP(event,2)" onclick="onSlotClick(2)">
+      <div class="drop-area-label">Type 2 <span style="color:var(--muted);font-size:10px;">(optional)</span></div>
+      <div class="drop-slot" id="slot2-content">
+        <div class="drop-empty"><span class="ei">⬡</span>Dual-Type Pokemon<br>ใส่ type ที่ 2 ที่นี่</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="palette-section">
+    <div class="palette-label">18 Types — ลาก หรือ กด เพื่อเลือก</div>
+    <div class="type-palette" id="checker-palette"></div>
+  </div>
+
+  <div class="results-section">
+    <div class="results-header">
+      <div class="results-title">Matchup Results</div>
+      <button class="clear-btn" onclick="clearChecker()">✕ Clear</button>
+    </div>
+    <div id="checker-results">
+      <div class="result-placeholder"><span class="rp-icon">⬡</span>เลือก Type 1 เพื่อดูผล Weakness</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+const TYPES=['Normal','Fire','Water','Electric','Grass','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
+
+const TC={
+  Normal:{Fire:'#ff6b35',bg:'#1f0800'},Fire:{c:'#ff6b35',bg:'#1f0800'},Water:{c:'#4fa3e8',bg:'#001828'},
+  Electric:{c:'#f5c518',bg:'#181300'},Grass:{c:'#5ec44a',bg:'#0a1800'},Ice:{c:'#7dd8d4',bg:'#001c1b'},
+  Fighting:{c:'#c84b25',bg:'#1a0700'},Poison:{c:'#a96bc4',bg:'#130818'},Ground:{c:'#d4934a',bg:'#1a0f00'},
+  Flying:{c:'#89a9f5',bg:'#070e1e'},Psychic:{c:'#f5567c',bg:'#1a0008'},Bug:{c:'#8db832',bg:'#0e1300'},
+  Rock:{c:'#b5a86a',bg:'#191700'},Ghost:{c:'#6660b0',bg:'#0a091e'},Dragon:{c:'#4b6ee8',bg:'#050b1e'},
+  Dark:{c:'#6b67a8',bg:'#0a091e'},Steel:{c:'#a8b8c8',bg:'#0e1215'},Fairy:{c:'#e882b0',bg:'#1a0011'}
+};
+function tc(type){return TC[type]||{c:'#888',bg:'#111'}}
+
+const CHART={
+  Normal:{weak:['Fighting'],resist:[],immune:['Ghost']},
+  Fire:{weak:['Water','Ground','Rock'],resist:['Fire','Grass','Ice','Bug','Steel','Fairy'],immune:[]},
+  Water:{weak:['Electric','Grass'],resist:['Fire','Water','Ice','Steel'],immune:[]},
+  Electric:{weak:['Ground'],resist:['Electric','Flying','Steel'],immune:[]},
+  Grass:{weak:['Fire','Ice','Poison','Flying','Bug'],resist:['Water','Electric','Grass','Ground'],immune:[]},
+  Ice:{weak:['Fire','Fighting','Rock','Steel'],resist:['Ice'],immune:[]},
+  Fighting:{weak:['Flying','Psychic','Fairy'],resist:['Rock','Bug','Dark'],immune:[]},
+  Poison:{weak:['Ground','Psychic'],resist:['Grass','Fighting','Poison','Bug','Fairy'],immune:[]},
+  Ground:{weak:['Water','Grass','Ice'],resist:['Poison','Rock'],immune:['Electric']},
+  Flying:{weak:['Electric','Ice','Rock'],resist:['Grass','Fighting','Bug'],immune:['Ground']},
+  Psychic:{weak:['Bug','Ghost','Dark'],resist:['Fighting','Psychic'],immune:[]},
+  Bug:{weak:['Fire','Flying','Rock'],resist:['Grass','Fighting','Ground'],immune:[]},
+  Rock:{weak:['Water','Grass','Fighting','Ground','Steel'],resist:['Normal','Fire','Poison','Flying'],immune:[]},
+  Ghost:{weak:['Ghost','Dark'],resist:['Poison','Bug'],immune:['Normal','Fighting']},
+  Dragon:{weak:['Ice','Dragon','Fairy'],resist:['Fire','Water','Electric','Grass'],immune:[]},
+  Dark:{weak:['Fighting','Bug','Fairy'],resist:['Ghost','Dark'],immune:['Psychic']},
+  Steel:{weak:['Fire','Fighting','Ground'],resist:['Normal','Grass','Ice','Flying','Psychic','Bug','Rock','Dragon','Steel','Fairy'],immune:['Poison']},
+  Fairy:{weak:['Poison','Steel'],resist:['Fighting','Bug','Dark'],immune:['Dragon']}
+};
+
+// National Pokédex - 1-251 (Gen I & II full) + selected popular Gen III-IX
+// Format: [id, name, type1, type2|null]
+const POKEDEX=[
+[1,'Bulbasaur','Grass','Poison'],[2,'Ivysaur','Grass','Poison'],[3,'Venusaur','Grass','Poison'],
+[4,'Charmander','Fire',null],[5,'Charmeleon','Fire',null],[6,'Charizard','Fire','Flying'],
+[7,'Squirtle','Water',null],[8,'Wartortle','Water',null],[9,'Blastoise','Water',null],
+[10,'Caterpie','Bug',null],[11,'Metapod','Bug',null],[12,'Butterfree','Bug','Flying'],
+[13,'Weedle','Bug','Poison'],[14,'Kakuna','Bug','Poison'],[15,'Beedrill','Bug','Poison'],
+[16,'Pidgey','Normal','Flying'],[17,'Pidgeotto','Normal','Flying'],[18,'Pidgeot','Normal','Flying'],
+[19,'Rattata','Normal',null],[20,'Raticate','Normal',null],
+[21,'Spearow','Normal','Flying'],[22,'Fearow','Normal','Flying'],
+[23,'Ekans','Poison',null],[24,'Arbok','Poison',null],
+[25,'Pikachu','Electric',null],[26,'Raichu','Electric',null],
+[27,'Sandshrew','Ground',null],[28,'Sandslash','Ground',null],
+[29,'Nidoran♀','Poison',null],[30,'Nidorina','Poison',null],[31,'Nidoqueen','Poison','Ground'],
+[32,'Nidoran♂','Poison',null],[33,'Nidorino','Poison',null],[34,'Nidoking','Poison','Ground'],
+[35,'Clefairy','Fairy',null],[36,'Clefable','Fairy',null],
+[37,'Vulpix','Fire',null],[38,'Ninetales','Fire',null],
+[39,'Jigglypuff','Normal','Fairy'],[40,'Wigglytuff','Normal','Fairy'],
+[41,'Zubat','Poison','Flying'],[42,'Golbat','Poison','Flying'],
+[43,'Oddish','Grass','Poison'],[44,'Gloom','Grass','Poison'],[45,'Vileplume','Grass','Poison'],
+[46,'Paras','Bug','Grass'],[47,'Parasect','Bug','Grass'],
+[48,'Venonat','Bug','Poison'],[49,'Venomoth','Bug','Poison'],
+[50,'Diglett','Ground',null],[51,'Dugtrio','Ground',null],
+[52,'Meowth','Normal',null],[53,'Persian','Normal',null],
+[54,'Psyduck','Water',null],[55,'Golduck','Water',null],
+[56,'Mankey','Fighting',null],[57,'Primeape','Fighting',null],
+[58,'Growlithe','Fire',null],[59,'Arcanine','Fire',null],
+[60,'Poliwag','Water',null],[61,'Poliwhirl','Water',null],[62,'Poliwrath','Water','Fighting'],
+[63,'Abra','Psychic',null],[64,'Kadabra','Psychic',null],[65,'Alakazam','Psychic',null],
+[66,'Machop','Fighting',null],[67,'Machoke','Fighting',null],[68,'Machamp','Fighting',null],
+[69,'Bellsprout','Grass','Poison'],[70,'Weepinbell','Grass','Poison'],[71,'Victreebel','Grass','Poison'],
+[72,'Tentacool','Water','Poison'],[73,'Tentacruel','Water','Poison'],
+[74,'Geodude','Rock','Ground'],[75,'Graveler','Rock','Ground'],[76,'Golem','Rock','Ground'],
+[77,'Ponyta','Fire',null],[78,'Rapidash','Fire',null],
+[79,'Slowpoke','Water','Psychic'],[80,'Slowbro','Water','Psychic'],
+[81,'Magnemite','Electric','Steel'],[82,'Magneton','Electric','Steel'],
+[83,"Farfetch'd",'Normal','Flying'],
+[84,'Doduo','Normal','Flying'],[85,'Dodrio','Normal','Flying'],
+[86,'Seel','Water',null],[87,'Dewgong','Water','Ice'],
+[88,'Grimer','Poison',null],[89,'Muk','Poison',null],
+[90,'Shellder','Water',null],[91,'Cloyster','Water','Ice'],
+[92,'Gastly','Ghost','Poison'],[93,'Haunter','Ghost','Poison'],[94,'Gengar','Ghost','Poison'],
+[95,'Onix','Rock','Ground'],
+[96,'Drowzee','Psychic',null],[97,'Hypno','Psychic',null],
+[98,'Krabby','Water',null],[99,'Kingler','Water',null],
+[100,'Voltorb','Electric',null],[101,'Electrode','Electric',null],
+[102,'Exeggcute','Grass','Psychic'],[103,'Exeggutor','Grass','Psychic'],
+[104,'Cubone','Ground',null],[105,'Marowak','Ground',null],
+[106,'Hitmonlee','Fighting',null],[107,'Hitmonchan','Fighting',null],
+[108,'Lickitung','Normal',null],
+[109,'Koffing','Poison',null],[110,'Weezing','Poison',null],
+[111,'Rhyhorn','Ground','Rock'],[112,'Rhydon','Ground','Rock'],
+[113,'Chansey','Normal',null],
+[114,'Tangela','Grass',null],
+[115,'Kangaskhan','Normal',null],
+[116,'Horsea','Water',null],[117,'Seadra','Water',null],
+[118,'Goldeen','Water',null],[119,'Seaking','Water',null],
+[120,'Staryu','Water',null],[121,'Starmie','Water','Psychic'],
+[122,'Mr. Mime','Psychic','Fairy'],
+[123,'Scyther','Bug','Flying'],
+[124,'Jynx','Ice','Psychic'],
+[125,'Electabuzz','Electric',null],
+[126,'Magmar','Fire',null],
+[127,'Pinsir','Bug',null],
+[128,'Tauros','Normal',null],
+[129,'Magikarp','Water',null],[130,'Gyarados','Water','Flying'],
+[131,'Lapras','Water','Ice'],
+[132,'Ditto','Normal',null],
+[133,'Eevee','Normal',null],[134,'Vaporeon','Water',null],[135,'Jolteon','Electric',null],
+[136,'Flareon','Fire',null],
+[137,'Porygon','Normal',null],
+[138,'Omanyte','Rock','Water'],[139,'Omastar','Rock','Water'],
+[140,'Kabuto','Rock','Water'],[141,'Kabutops','Rock','Water'],
+[142,'Aerodactyl','Rock','Flying'],
+[143,'Snorlax','Normal',null],
+[144,'Articuno','Ice','Flying'],[145,'Zapdos','Electric','Flying'],[146,'Moltres','Fire','Flying'],
+[147,'Dratini','Dragon',null],[148,'Dragonair','Dragon',null],[149,'Dragonite','Dragon','Flying'],
+[150,'Mewtwo','Psychic',null],[151,'Mew','Psychic',null],
+// Gen II
+[152,'Chikorita','Grass',null],[153,'Bayleef','Grass',null],[154,'Meganium','Grass',null],
+[155,'Cyndaquil','Fire',null],[156,'Quilava','Fire',null],[157,'Typhlosion','Fire',null],
+[158,'Totodile','Water',null],[159,'Croconaw','Water',null],[160,'Feraligatr','Water',null],
+[161,'Sentret','Normal',null],[162,'Furret','Normal',null],
+[163,'Hoothoot','Normal','Flying'],[164,'Noctowl','Normal','Flying'],
+[165,'Ledyba','Bug','Flying'],[166,'Ledian','Bug','Flying'],
+[167,'Spinarak','Bug','Poison'],[168,'Ariados','Bug','Poison'],
+[169,'Crobat','Poison','Flying'],
+[170,'Chinchou','Water','Electric'],[171,'Lanturn','Water','Electric'],
+[172,'Pichu','Electric',null],
+[173,'Cleffa','Fairy',null],
+[174,'Igglybuff','Normal','Fairy'],
+[175,'Togepi','Fairy',null],[176,'Togetic','Fairy','Flying'],
+[177,'Natu','Psychic','Flying'],[178,'Xatu','Psychic','Flying'],
+[179,'Mareep','Electric',null],[180,'Flaaffy','Electric',null],[181,'Ampharos','Electric',null],
+[182,'Bellossom','Grass',null],
+[183,'Marill','Water','Fairy'],[184,'Azumarill','Water','Fairy'],
+[185,'Sudowoodo','Rock',null],
+[186,'Politoed','Water',null],
+[187,'Hoppip','Grass','Flying'],[188,'Skiploom','Grass','Flying'],[189,'Jumpluff','Grass','Flying'],
+[190,'Aipom','Normal',null],
+[191,'Sunkern','Grass',null],[192,'Sunflora','Grass',null],
+[193,'Yanma','Bug','Flying'],
+[194,'Wooper','Water','Ground'],[195,'Quagsire','Water','Ground'],
+[196,'Espeon','Psychic',null],[197,'Umbreon','Dark',null],
+[198,'Murkrow','Dark','Flying'],
+[199,'Slowking','Water','Psychic'],
+[200,'Misdreavus','Ghost',null],
+[201,'Unown','Psychic',null],
+[202,'Wobbuffet','Psychic',null],
+[203,'Girafarig','Normal','Psychic'],
+[204,'Pineco','Bug',null],[205,'Forretress','Bug','Steel'],
+[206,'Dunsparce','Normal',null],
+[207,'Gligar','Ground','Flying'],
+[208,'Steelix','Steel','Ground'],
+[209,'Snubbull','Fairy',null],[210,'Granbull','Fairy',null],
+[211,'Qwilfish','Water','Poison'],
+[212,'Scizor','Bug','Steel'],
+[213,'Shuckle','Bug','Rock'],
+[214,'Heracross','Bug','Fighting'],
+[215,'Sneasel','Dark','Ice'],
+[216,'Teddiursa','Normal',null],[217,'Ursaring','Normal',null],
+[218,'Slugma','Fire',null],[219,'Magcargo','Fire','Rock'],
+[220,'Swinub','Ice','Ground'],[221,'Piloswine','Ice','Ground'],
+[222,'Corsola','Water','Rock'],
+[223,'Remoraid','Water',null],[224,'Octillery','Water',null],
+[225,'Delibird','Ice','Flying'],
+[226,'Mantine','Water','Flying'],
+[227,'Skarmory','Steel','Flying'],
+[228,'Houndour','Dark','Fire'],[229,'Houndoom','Dark','Fire'],
+[230,'Kingdra','Water','Dragon'],
+[231,'Phanpy','Ground',null],[232,'Donphan','Ground',null],
+[233,'Porygon2','Normal',null],
+[234,'Stantler','Normal',null],
+[235,'Smeargle','Normal',null],
+[236,'Tyrogue','Fighting',null],
+[237,'Hitmontop','Fighting',null],
+[238,'Smoochum','Ice','Psychic'],
+[239,'Elekid','Electric',null],
+[240,'Magby','Fire',null],
+[241,'Miltank','Normal',null],
+[242,'Blissey','Normal',null],
+[243,'Raikou','Electric',null],[244,'Entei','Fire',null],[245,'Suicune','Water',null],
+[246,'Larvitar','Rock','Ground'],[247,'Pupitar','Rock','Ground'],[248,'Tyranitar','Rock','Dark'],
+[249,'Lugia','Psychic','Flying'],[250,'Ho-Oh','Fire','Flying'],
+[251,'Celebi','Psychic','Grass'],
+// Gen III highlights
+[252,'Treecko','Grass',null],[253,'Grovyle','Grass',null],[254,'Sceptile','Grass',null],
+[255,'Torchic','Fire',null],[256,'Combusken','Fire','Fighting'],[257,'Blaziken','Fire','Fighting'],
+[258,'Mudkip','Water',null],[259,'Marshtomp','Water','Ground'],[260,'Swampert','Water','Ground'],
+[261,'Poochyena','Dark',null],[262,'Mightyena','Dark',null],
+[263,'Zigzagoon','Normal',null],[264,'Linoone','Normal',null],
+[270,'Lotad','Water','Grass'],[271,'Lombre','Water','Grass'],[272,'Ludicolo','Water','Grass'],
+[273,'Seedot','Grass',null],[274,'Nuzleaf','Grass','Dark'],[275,'Shiftry','Grass','Dark'],
+[276,'Taillow','Normal','Flying'],[277,'Swellow','Normal','Flying'],
+[278,'Wingull','Water','Flying'],[279,'Pelipper','Water','Flying'],
+[280,'Ralts','Psychic','Fairy'],[281,'Kirlia','Psychic','Fairy'],[282,'Gardevoir','Psychic','Fairy'],
+[285,'Shroomish','Grass',null],[286,'Breloom','Grass','Fighting'],
+[287,'Slakoth','Normal',null],[288,'Vigoroth','Normal',null],[289,'Slaking','Normal',null],
+[293,'Whismur','Normal',null],[294,'Loudred','Normal',null],[295,'Exploud','Normal',null],
+[296,'Makuhita','Fighting',null],[297,'Hariyama','Fighting',null],
+[298,'Azurill','Normal','Fairy'],
+[299,'Nosepass','Rock',null],
+[300,'Skitty','Normal',null],[301,'Delcatty','Normal',null],
+[302,'Sableye','Dark','Ghost'],
+[303,'Mawile','Steel','Fairy'],
+[304,'Aron','Steel','Rock'],[305,'Lairon','Steel','Rock'],[306,'Aggron','Steel','Rock'],
+[307,'Meditite','Fighting','Psychic'],[308,'Medicham','Fighting','Psychic'],
+[309,'Electrike','Electric',null],[310,'Manectric','Electric',null],
+[311,'Plusle','Electric',null],[312,'Minun','Electric',null],
+[313,'Volbeat','Bug',null],[314,'Illumise','Bug',null],
+[315,'Roselia','Grass','Poison'],
+[316,'Gulpin','Poison',null],[317,'Swalot','Poison',null],
+[318,'Carvanha','Water','Dark'],[319,'Sharpedo','Water','Dark'],
+[320,'Wailmer','Water',null],[321,'Wailord','Water',null],
+[322,'Numel','Fire','Ground'],[323,'Camerupt','Fire','Ground'],
+[324,'Torkoal','Fire',null],
+[325,'Spoink','Psychic',null],[326,'Grumpig','Psychic',null],
+[327,'Spinda','Normal',null],
+[328,'Trapinch','Ground',null],[329,'Vibrava','Ground','Dragon'],[330,'Flygon','Ground','Dragon'],
+[331,'Cacnea','Grass',null],[332,'Cacturne','Grass','Dark'],
+[333,'Swablu','Normal','Flying'],[334,'Altaria','Dragon','Flying'],
+[335,'Zangoose','Normal',null],[336,'Seviper','Poison',null],
+[337,'Lunatone','Rock','Psychic'],[338,'Solrock','Rock','Psychic'],
+[339,'Barboach','Water','Ground'],[340,'Whiscash','Water','Ground'],
+[341,'Corphish','Water',null],[342,'Crawdaunt','Water','Dark'],
+[343,'Baltoy','Ground','Psychic'],[344,'Claydol','Ground','Psychic'],
+[345,'Lileep','Rock','Grass'],[346,'Cradily','Rock','Grass'],
+[347,'Anorith','Rock','Bug'],[348,'Armaldo','Rock','Bug'],
+[349,'Feebas','Water',null],[350,'Milotic','Water',null],
+[352,'Kecleon','Normal',null],
+[353,'Shuppet','Ghost',null],[354,'Banette','Ghost',null],
+[355,'Duskull','Ghost',null],[356,'Dusclops','Ghost',null],
+[357,'Tropius','Grass','Flying'],
+[358,'Chimecho','Psychic',null],
+[359,'Absol','Dark',null],
+[360,'Wynaut','Psychic',null],
+[361,'Snorunt','Ice',null],[362,'Glalie','Ice',null],
+[363,'Spheal','Ice','Water'],[364,'Sealeo','Ice','Water'],[365,'Walrein','Ice','Water'],
+[366,'Clamperl','Water',null],[367,'Huntail','Water',null],[368,'Gorebyss','Water',null],
+[369,'Relicanth','Water','Rock'],
+[370,'Luvdisc','Water',null],
+[371,'Bagon','Dragon',null],[372,'Shelgon','Dragon',null],[373,'Salamence','Dragon','Flying'],
+[374,'Beldum','Steel','Psychic'],[375,'Metang','Steel','Psychic'],[376,'Metagross','Steel','Psychic'],
+[377,'Regirock','Rock',null],[378,'Regice','Ice',null],[379,'Registeel','Steel',null],
+[380,'Latias','Dragon','Psychic'],[381,'Latios','Dragon','Psychic'],
+[382,'Kyogre','Water',null],[383,'Groudon','Ground',null],[384,'Rayquaza','Dragon','Flying'],
+[385,'Jirachi','Steel','Psychic'],[386,'Deoxys','Psychic',null],
+// Gen IV highlights
+[387,'Turtwig','Grass',null],[388,'Grotle','Grass',null],[389,'Torterra','Grass','Ground'],
+[390,'Chimchar','Fire',null],[391,'Monferno','Fire','Fighting'],[392,'Infernape','Fire','Fighting'],
+[393,'Piplup','Water',null],[394,'Prinplup','Water',null],[395,'Empoleon','Water','Steel'],
+[396,'Starly','Normal','Flying'],[397,'Staravia','Normal','Flying'],[398,'Staraptor','Normal','Flying'],
+[399,'Bidoof','Normal',null],[400,'Bibarel','Normal','Water'],
+[401,'Kricketot','Bug',null],[402,'Kricketune','Bug',null],
+[403,'Shinx','Electric',null],[404,'Luxio','Electric',null],[405,'Luxray','Electric',null],
+[406,'Budew','Grass','Poison'],[407,'Roserade','Grass','Poison'],
+[408,'Cranidos','Rock',null],[409,'Rampardos','Rock',null],
+[410,'Shieldon','Rock','Steel'],[411,'Bastiodon','Rock','Steel'],
+[412,'Burmy','Bug',null],[413,'Wormadam','Bug','Grass'],
+[414,'Mothim','Bug','Flying'],
+[415,'Combee','Bug','Flying'],[416,'Vespiquen','Bug','Flying'],
+[417,'Pachirisu','Electric',null],
+[418,'Buizel','Water',null],[419,'Floatzel','Water',null],
+[420,'Cherubi','Grass',null],[421,'Cherrim','Grass',null],
+[422,'Shellos','Water',null],[423,'Gastrodon','Water','Ground'],
+[424,'Ambipom','Normal',null],
+[425,'Drifloon','Ghost','Flying'],[426,'Drifblim','Ghost','Flying'],
+[427,'Buneary','Normal',null],[428,'Lopunny','Normal',null],
+[429,'Mismagius','Ghost',null],
+[430,'Honchkrow','Dark','Flying'],
+[431,'Glameow','Normal',null],[432,'Purugly','Normal',null],
+[433,'Chingling','Psychic',null],
+[434,'Stunky','Poison','Dark'],[435,'Skuntank','Poison','Dark'],
+[436,'Bronzor','Steel','Psychic'],[437,'Bronzong','Steel','Psychic'],
+[438,'Bonsly','Rock',null],
+[439,'Mime Jr.','Psychic','Fairy'],
+[440,'Happiny','Normal',null],
+[441,'Chatot','Normal','Flying'],
+[442,'Spiritomb','Ghost','Dark'],
+[443,'Gible','Dragon','Ground'],[444,'Gabite','Dragon','Ground'],[445,'Garchomp','Dragon','Ground'],
+[446,'Munchlax','Normal',null],
+[447,'Riolu','Fighting',null],[448,'Lucario','Fighting','Steel'],
+[449,'Hippopotas','Ground',null],[450,'Hippowdon','Ground',null],
+[451,'Skorupi','Poison','Bug'],[452,'Drapion','Poison','Dark'],
+[453,'Croagunk','Poison','Fighting'],[454,'Toxicroak','Poison','Fighting'],
+[455,'Carnivine','Grass',null],
+[456,'Finneon','Water',null],[457,'Lumineon','Water',null],
+[458,'Mantyke','Water','Flying'],
+[459,'Snover','Grass','Ice'],[460,'Abomasnow','Grass','Ice'],
+[461,'Weavile','Dark','Ice'],
+[462,'Magnezone','Electric','Steel'],
+[463,'Lickilicky','Normal',null],
+[464,'Rhyperior','Ground','Rock'],
+[465,'Tangrowth','Grass',null],
+[466,'Electivire','Electric',null],
+[467,'Magmortar','Fire',null],
+[468,'Togekiss','Fairy','Flying'],
+[469,'Yanmega','Bug','Flying'],
+[470,'Leafeon','Grass',null],[471,'Glaceon','Ice',null],
+[472,'Gliscor','Ground','Flying'],
+[473,'Mamoswine','Ice','Ground'],
+[474,'Porygon-Z','Normal',null],
+[475,'Gallade','Psychic','Fighting'],
+[476,'Probopass','Rock','Steel'],
+[477,'Dusknoir','Ghost',null],
+[478,'Froslass','Ice','Ghost'],
+[479,'Rotom','Electric','Ghost'],
+[480,'Uxie','Psychic',null],[481,'Mesprit','Psychic',null],[482,'Azelf','Psychic',null],
+[483,'Dialga','Steel','Dragon'],[484,'Palkia','Water','Dragon'],
+[485,'Heatran','Fire','Steel'],
+[486,'Regigigas','Normal',null],
+[487,'Giratina','Ghost','Dragon'],
+[488,'Cresselia','Psychic',null],
+[489,'Phione','Water',null],[490,'Manaphy','Water',null],
+[491,'Darkrai','Dark',null],
+[492,'Shaymin','Grass',null],
+[493,'Arceus','Normal',null],
+// Gen V highlights
+[494,'Victini','Psychic','Fire'],
+[495,'Snivy','Grass',null],[496,'Servine','Grass',null],[497,'Serperior','Grass',null],
+[498,'Tepig','Fire',null],[499,'Pignite','Fire','Fighting'],[500,'Emboar','Fire','Fighting'],
+[501,'Oshawott','Water',null],[502,'Dewott','Water',null],[503,'Samurott','Water',null],
+[506,'Lillipup','Normal',null],[507,'Herdier','Normal',null],[508,'Stoutland','Normal',null],
+[509,'Purrloin','Dark',null],[510,'Liepard','Dark',null],
+[511,'Pansage','Grass',null],[512,'Simisage','Grass',null],
+[513,'Pansear','Fire',null],[514,'Simisear','Fire',null],
+[515,'Panpour','Water',null],[516,'Simipour','Water',null],
+[517,'Munna','Psychic',null],[518,'Musharna','Psychic',null],
+[519,'Pidove','Normal','Flying'],[520,'Tranquill','Normal','Flying'],[521,'Unfezant','Normal','Flying'],
+[522,'Blitzle','Electric',null],[523,'Zebstrika','Electric',null],
+[524,'Roggenrola','Rock',null],[525,'Boldore','Rock',null],[526,'Gigalith','Rock',null],
+[527,'Woobat','Psychic','Flying'],[528,'Swoobat','Psychic','Flying'],
+[529,'Drilbur','Ground',null],[530,'Excadrill','Ground','Steel'],
+[531,'Audino','Normal',null],
+[532,'Timburr','Fighting',null],[533,'Gurdurr','Fighting',null],[534,'Conkeldurr','Fighting',null],
+[535,'Tympole','Water',null],[536,'Palpitoad','Water','Ground'],[537,'Seismitoad','Water','Ground'],
+[538,'Throh','Fighting',null],[539,'Sawk','Fighting',null],
+[540,'Sewaddle','Bug','Grass'],[541,'Swadloon','Bug','Grass'],[542,'Leavanny','Bug','Grass'],
+[543,'Venipede','Bug','Poison'],[544,'Whirlipede','Bug','Poison'],[545,'Scolipede','Bug','Poison'],
+[546,'Cottonee','Grass','Fairy'],[547,'Whimsicott','Grass','Fairy'],
+[548,'Petilil','Grass',null],[549,'Lilligant','Grass',null],
+[550,'Basculin','Water',null],
+[551,'Sandile','Ground','Dark'],[552,'Krokorok','Ground','Dark'],[553,'Krookodile','Ground','Dark'],
+[554,'Darumaka','Fire',null],[555,'Darmanitan','Fire',null],
+[556,'Maractus','Grass',null],
+[557,'Dwebble','Bug','Rock'],[558,'Crustle','Bug','Rock'],
+[559,'Scraggy','Dark','Fighting'],[560,'Scrafty','Dark','Fighting'],
+[561,'Sigilyph','Psychic','Flying'],
+[562,'Yamask','Ghost',null],[563,'Cofagrigus','Ghost',null],
+[564,'Tirtouga','Water','Rock'],[565,'Carracosta','Water','Rock'],
+[566,'Archen','Rock','Flying'],[567,'Archeops','Rock','Flying'],
+[568,'Trubbish','Poison',null],[569,'Garbodor','Poison',null],
+[570,'Zorua','Dark',null],[571,'Zoroark','Dark',null],
+[572,'Minccino','Normal',null],[573,'Cinccino','Normal',null],
+[574,'Gothita','Psychic',null],[575,'Gothorita','Psychic',null],[576,'Gothitelle','Psychic',null],
+[577,'Solosis','Psychic',null],[578,'Duosion','Psychic',null],[579,'Reuniclus','Psychic',null],
+[580,'Ducklett','Water','Flying'],[581,'Swanna','Water','Flying'],
+[582,'Vanillite','Ice',null],[583,'Vanillish','Ice',null],[584,'Vanilluxe','Ice',null],
+[585,'Deerling','Normal','Grass'],[586,'Sawsbuck','Normal','Grass'],
+[587,'Emolga','Electric','Flying'],
+[588,'Karrablast','Bug',null],[589,'Escavalier','Bug','Steel'],
+[590,'Foongus','Grass','Poison'],[591,'Amoonguss','Grass','Poison'],
+[592,'Frillish','Water','Ghost'],[593,'Jellicent','Water','Ghost'],
+[594,'Alomomola','Water',null],
+[595,'Joltik','Bug','Electric'],[596,'Galvantula','Bug','Electric'],
+[597,'Ferroseed','Grass','Steel'],[598,'Ferrothorn','Grass','Steel'],
+[599,'Klink','Steel',null],[600,'Klang','Steel',null],[601,'Klinklang','Steel',null],
+[602,'Tynamo','Electric',null],[603,'Eelektrik','Electric',null],[604,'Eelektross','Electric',null],
+[605,'Elgyem','Psychic',null],[606,'Beheeyem','Psychic',null],
+[607,'Litwick','Ghost','Fire'],[608,'Lampent','Ghost','Fire'],[609,'Chandelure','Ghost','Fire'],
+[610,'Axew','Dragon',null],[611,'Fraxure','Dragon',null],[612,'Haxorus','Dragon',null],
+[613,'Cubchoo','Ice',null],[614,'Beartic','Ice',null],
+[615,'Cryogonal','Ice',null],
+[616,'Shelmet','Bug',null],[617,'Accelgor','Bug',null],
+[618,'Stunfisk','Ground','Electric'],
+[619,'Mienfoo','Fighting',null],[620,'Mienshao','Fighting',null],
+[621,'Druddigon','Dragon',null],
+[622,'Golett','Ground','Ghost'],[623,'Golurk','Ground','Ghost'],
+[624,'Pawniard','Dark','Steel'],[625,'Bisharp','Dark','Steel'],
+[626,'Bouffalant','Normal',null],
+[627,'Rufflet','Normal','Flying'],[628,'Braviary','Normal','Flying'],
+[629,'Vullaby','Dark','Flying'],[630,'Mandibuzz','Dark','Flying'],
+[631,'Heatmor','Fire',null],[632,'Durant','Bug','Steel'],
+[633,'Deino','Dark','Dragon'],[634,'Zweilous','Dark','Dragon'],[635,'Hydreigon','Dark','Dragon'],
+[636,'Larvesta','Bug','Fire'],[637,'Volcarona','Bug','Fire'],
+[638,'Cobalion','Steel','Fighting'],[639,'Terrakion','Rock','Fighting'],[640,'Virizion','Grass','Fighting'],
+[641,'Tornadus','Flying',null],[642,'Thundurus','Electric','Flying'],[643,'Reshiram','Dragon','Fire'],
+[644,'Zekrom','Dragon','Electric'],[645,'Landorus','Ground','Flying'],
+[646,'Kyurem','Dragon','Ice'],
+[647,'Keldeo','Water','Fighting'],
+[648,'Meloetta','Normal','Psychic'],
+[649,'Genesect','Bug','Steel'],
+// Gen VI highlights
+[650,'Chespin','Grass',null],[651,'Quilladin','Grass',null],[652,'Chesnaught','Grass','Fighting'],
+[653,'Fennekin','Fire',null],[654,'Braixen','Fire',null],[655,'Delphox','Fire','Psychic'],
+[656,'Froakie','Water',null],[657,'Frogadier','Water',null],[658,'Greninja','Water','Dark'],
+[659,'Bunnelby','Normal',null],[660,'Diggersby','Normal','Ground'],
+[661,'Fletchling','Normal','Flying'],[662,'Fletchinder','Fire','Flying'],[663,'Talonflame','Fire','Flying'],
+[664,'Scatterbug','Bug',null],[665,'Spewpa','Bug',null],[666,'Vivillon','Bug','Flying'],
+[667,'Litleo','Fire','Normal'],[668,'Pyroar','Fire','Normal'],
+[669,'Flabébé','Fairy',null],[670,'Floette','Fairy',null],[671,'Florges','Fairy',null],
+[672,'Skiddo','Grass',null],[673,'Gogoat','Grass',null],
+[674,'Pancham','Fighting',null],[675,'Pangoro','Fighting','Dark'],
+[676,'Furfrou','Normal',null],
+[677,'Espurr','Psychic',null],[678,'Meowstic','Psychic',null],
+[679,'Honedge','Steel','Ghost'],[680,'Doublade','Steel','Ghost'],[681,'Aegislash','Steel','Ghost'],
+[682,'Spritzee','Fairy',null],[683,'Aromatisse','Fairy',null],
+[684,'Swirlix','Fairy',null],[685,'Slurpuff','Fairy',null],
+[686,'Inkay','Dark','Psychic'],[687,'Malamar','Dark','Psychic'],
+[688,'Binacle','Rock','Water'],[689,'Barbaracle','Rock','Water'],
+[690,'Skrelp','Poison','Water'],[691,'Dragalge','Poison','Dragon'],
+[692,'Clauncher','Water',null],[693,'Clawitzer','Water',null],
+[694,'Helioptile','Electric','Normal'],[695,'Heliolisk','Electric','Normal'],
+[696,'Tyrunt','Rock','Dragon'],[697,'Tyrantrum','Rock','Dragon'],
+[698,'Amaura','Rock','Ice'],[699,'Aurorus','Rock','Ice'],
+[700,'Sylveon','Fairy',null],
+[701,'Hawlucha','Fighting','Flying'],
+[702,'Dedenne','Electric','Fairy'],
+[703,'Carbink','Rock','Fairy'],
+[704,'Goomy','Dragon',null],[705,'Sliggoo','Dragon',null],[706,'Goodra','Dragon',null],
+[707,'Klefki','Steel','Fairy'],
+[708,'Phantump','Ghost','Grass'],[709,'Trevenant','Ghost','Grass'],
+[710,'Pumpkaboo','Ghost','Grass'],[711,'Gourgeist','Ghost','Grass'],
+[712,'Bergmite','Ice',null],[713,'Avalugg','Ice',null],
+[714,'Noibat','Flying','Dragon'],[715,'Noivern','Flying','Dragon'],
+[716,'Xerneas','Fairy',null],[717,'Yveltal','Dark','Flying'],[718,'Zygarde','Dragon','Ground'],
+[719,'Diancie','Rock','Fairy'],
+[720,'Hoopa','Psychic','Ghost'],
+[721,'Volcanion','Fire','Water'],
+// Gen VII highlights
+[722,'Rowlet','Grass','Flying'],[723,'Dartrix','Grass','Flying'],[724,'Decidueye','Grass','Ghost'],
+[725,'Litten','Fire',null],[726,'Torracat','Fire',null],[727,'Incineroar','Fire','Dark'],
+[728,'Popplio','Water',null],[729,'Brionne','Water',null],[730,'Primarina','Water','Fairy'],
+[731,'Pikipek','Normal','Flying'],[732,'Trumbeak','Normal','Flying'],[733,'Toucannon','Normal','Flying'],
+[734,'Yungoos','Normal',null],[735,'Gumshoos','Normal',null],
+[736,'Grubbin','Bug',null],[737,'Charjabug','Bug','Electric'],[738,'Vikavolt','Bug','Electric'],
+[739,'Crabrawler','Fighting',null],[740,'Crabominable','Fighting','Ice'],
+[741,'Oricorio','Fire','Flying'],
+[742,'Cutiefly','Bug','Fairy'],[743,'Ribombee','Bug','Fairy'],
+[744,'Rockruff','Rock',null],[745,'Lycanroc','Rock',null],
+[746,'Wishiwashi','Water',null],
+[747,'Mareanie','Poison','Water'],[748,'Toxapex','Poison','Water'],
+[749,'Mudbray','Ground',null],[750,'Mudsdale','Ground',null],
+[751,'Dewpider','Water','Bug'],[752,'Araquanid','Water','Bug'],
+[753,'Fomantis','Grass',null],[754,'Lurantis','Grass',null],
+[755,'Morelull','Grass','Fairy'],[756,'Shiinotic','Grass','Fairy'],
+[757,'Salandit','Poison','Fire'],[758,'Salazzle','Poison','Fire'],
+[759,'Stufful','Normal','Fighting'],[760,'Bewear','Normal','Fighting'],
+[761,'Bounsweet','Grass',null],[762,'Steenee','Grass',null],[763,'Tsareena','Grass',null],
+[764,'Comfey','Fairy',null],
+[765,'Oranguru','Normal','Psychic'],
+[766,'Passimian','Fighting',null],
+[767,'Wimpod','Bug','Water'],[768,'Golisopod','Bug','Water'],
+[769,'Sandygast','Ghost','Ground'],[770,'Palossand','Ghost','Ground'],
+[771,'Pyukumuku','Water',null],
+[772,'Type: Null','Normal',null],[773,'Silvally','Normal',null],
+[774,'Minior','Rock','Flying'],
+[775,'Komala','Normal',null],
+[776,'Turtonator','Fire','Dragon'],
+[777,'Togedemaru','Electric','Steel'],
+[778,'Mimikyu','Ghost','Fairy'],
+[779,'Bruxish','Water','Psychic'],
+[780,'Drampa','Normal','Dragon'],
+[781,'Dhelmise','Ghost','Grass'],
+[782,'Jangmo-o','Dragon',null],[783,'Hakamo-o','Dragon','Fighting'],[784,'Kommo-o','Dragon','Fighting'],
+[785,'Tapu Koko','Electric','Fairy'],[786,'Tapu Lele','Psychic','Fairy'],
+[787,'Tapu Bulu','Grass','Fairy'],[788,'Tapu Fini','Water','Fairy'],
+[789,'Cosmog','Psychic',null],[790,'Cosmoem','Psychic',null],
+[791,'Solgaleo','Psychic','Steel'],[792,'Lunala','Psychic','Ghost'],
+[793,'Nihilego','Rock','Poison'],[794,'Buzzwole','Bug','Fighting'],
+[795,'Pheromosa','Bug','Fighting'],[796,'Xurkitree','Electric',null],
+[797,'Celesteela','Steel','Flying'],[798,'Kartana','Grass','Steel'],
+[799,'Guzzlord','Dark','Dragon'],
+[800,'Necrozma','Psychic',null],
+[801,'Magearna','Steel','Fairy'],[802,'Marshadow','Fighting','Ghost'],
+[803,'Poipole','Poison',null],[804,'Naganadel','Poison','Dragon'],
+[805,'Stakataka','Rock','Steel'],[806,'Blacephalon','Fire','Ghost'],
+[807,'Zeraora','Electric',null],
+[808,'Meltan','Steel',null],[809,'Melmetal','Steel',null],
+// Gen VIII highlights
+[810,'Grookey','Grass',null],[811,'Thwackey','Grass',null],[812,'Rillaboom','Grass',null],
+[813,'Scorbunny','Fire',null],[814,'Raboot','Fire',null],[815,'Cinderace','Fire',null],
+[816,'Sobble','Water',null],[817,'Drizzile','Water',null],[818,'Inteleon','Water',null],
+[819,'Skwovet','Normal',null],[820,'Greedent','Normal',null],
+[821,'Rookidee','Flying',null],[822,'Corvisquire','Flying',null],[823,'Corviknight','Flying','Steel'],
+[824,'Blipbug','Bug',null],[825,'Dottler','Bug','Psychic'],[826,'Orbeetle','Bug','Psychic'],
+[827,'Nickit','Dark',null],[828,'Thievul','Dark',null],
+[829,'Gossifleur','Grass',null],[830,'Eldegoss','Grass',null],
+[831,'Wooloo','Normal',null],[832,'Dubwool','Normal',null],
+[833,'Chewtle','Water',null],[834,'Drednaw','Water','Rock'],
+[835,'Yamper','Electric',null],[836,'Boltund','Electric',null],
+[837,'Rolycoly','Rock',null],[838,'Carkol','Rock','Fire'],[839,'Coalossal','Rock','Fire'],
+[840,'Applin','Grass','Dragon'],[841,'Flapple','Grass','Dragon'],[842,'Appletun','Grass','Dragon'],
+[843,'Silicobra','Ground',null],[844,'Sandaconda','Ground',null],
+[845,'Cramorant','Flying','Water'],
+[846,'Arrokuda','Water',null],[847,'Barraskewda','Water',null],
+[848,'Toxel','Electric','Poison'],[849,'Toxtricity','Electric','Poison'],
+[850,'Sizzlipede','Fire','Bug'],[851,'Centiskorch','Fire','Bug'],
+[852,'Clobbopus','Fighting',null],[853,'Grapploct','Fighting','Water'],
+[854,'Sinistea','Ghost',null],[855,'Polteageist','Ghost',null],
+[856,'Hatenna','Psychic',null],[857,'Hattrem','Psychic',null],[858,'Hatterene','Psychic','Fairy'],
+[859,'Impidimp','Dark','Fairy'],[860,'Morgrem','Dark','Fairy'],[861,'Grimmsnarl','Dark','Fairy'],
+[862,'Obstagoon','Dark','Normal'],
+[863,'Perrserker','Steel',null],
+[864,'Cursola','Ghost',null],
+[865,"Sirfetch'd",'Fighting',null],
+[866,'Mr. Rime','Ice','Psychic'],
+[867,'Runerigus','Ground','Ghost'],
+[868,'Milcery','Fairy',null],[869,'Alcremie','Fairy',null],
+[870,'Falinks','Fighting',null],
+[871,'Pincurchin','Electric',null],
+[872,'Snom','Ice','Bug'],[873,'Frosmoth','Ice','Bug'],
+[874,'Stonjourner','Rock',null],
+[875,'Eiscue','Ice',null],
+[876,'Indeedee','Psychic','Normal'],
+[877,'Morpeko','Electric','Dark'],
+[878,'Cufant','Steel',null],[879,'Copperajah','Steel',null],
+[880,'Dracozolt','Electric','Dragon'],[881,'Arctozolt','Electric','Ice'],
+[882,'Dracovish','Water','Dragon'],[883,'Arctovish','Water','Ice'],
+[884,'Duraludon','Steel','Dragon'],
+[885,'Dreepy','Dragon','Ghost'],[886,'Drakloak','Dragon','Ghost'],[887,'Dragapult','Dragon','Ghost'],
+[888,'Zacian','Fairy',null],[889,'Zamazenta','Fighting',null],
+[890,'Eternatus','Poison','Dragon'],
+[891,'Kubfu','Fighting',null],[892,'Urshifu','Fighting','Dark'],
+[893,'Zarude','Dark','Grass'],
+[894,'Regieleki','Electric',null],[895,'Regidrago','Dragon',null],
+[896,'Glastrier','Ice',null],[897,'Spectrier','Ghost',null],
+[898,'Calyrex','Psychic','Grass'],
+// Gen IX highlights
+[906,'Sprigatito','Grass',null],[907,'Floragato','Grass',null],[908,'Meowscarada','Grass','Dark'],
+[909,'Fuecoco','Fire',null],[910,'Crocalor','Fire',null],[911,'Skeledirge','Fire','Ghost'],
+[912,'Quaxly','Water',null],[913,'Quaxwell','Water',null],[914,'Quaquaval','Water','Fighting'],
+[915,'Lechonk','Normal',null],[916,'Oinkologne','Normal',null],
+[917,'Tarountula','Bug',null],[918,'Spidops','Bug',null],
+[919,'Nymble','Bug',null],[920,'Lokix','Bug','Dark'],
+[921,'Pawmi','Electric',null],[922,'Pawmo','Electric','Fighting'],[923,'Pawmot','Electric','Fighting'],
+[924,'Tandemaus','Normal',null],[925,'Maushold','Normal',null],
+[926,'Fidough','Fairy',null],[927,'Dachsbun','Fairy',null],
+[928,'Smoliv','Grass','Normal'],[929,'Dolliv','Grass','Normal'],[930,'Arboliva','Grass','Normal'],
+[931,'Squawkabilly','Normal','Flying'],
+[932,'Nacli','Rock',null],[933,'Naclstack','Rock',null],[934,'Garganacl','Rock',null],
+[935,'Charcadet','Fire',null],[936,'Armarouge','Fire','Psychic'],[937,'Ceruledge','Fire','Ghost'],
+[938,'Tadbulb','Electric',null],[939,'Bellibolt','Electric',null],
+[940,'Wattrel','Electric','Flying'],[941,'Kilowattrel','Electric','Flying'],
+[942,'Maschiff','Dark',null],[943,'Mabosstiff','Dark',null],
+[944,'Shroodle','Poison','Normal'],[945,'Grafaiai','Poison','Normal'],
+[946,'Bramblin','Grass','Ghost'],[947,'Brambleghast','Grass','Ghost'],
+[948,'Toedscool','Ground','Grass'],[949,'Toedscruel','Ground','Grass'],
+[950,'Klawf','Rock',null],
+[951,'Capsakid','Grass',null],[952,'Scovillain','Grass','Fire'],
+[953,'Rellor','Bug',null],[954,'Rabsca','Bug','Psychic'],
+[955,'Flittle','Psychic',null],[956,'Espathra','Psychic',null],
+[957,'Tinkatink','Fairy','Steel'],[958,'Tinkatuff','Fairy','Steel'],[959,'Tinkaton','Fairy','Steel'],
+[960,'Wiglett','Water',null],[961,'Wugtrio','Water',null],
+[962,'Bombirdier','Flying','Dark'],
+[963,'Finizen','Water',null],[964,'Palafin','Water',null],
+[965,'Varoom','Steel','Poison'],[966,'Revavroom','Steel','Poison'],
+[967,'Cyclizar','Dragon','Normal'],
+[968,'Orthworm','Steel',null],
+[969,'Glimmet','Rock','Poison'],[970,'Glimmora','Rock','Poison'],
+[971,'Greavard','Ghost',null],[972,'Houndstone','Ghost',null],
+[973,'Flamigo','Flying','Fighting'],
+[974,'Cetoddle','Ice',null],[975,'Cetitan','Ice',null],
+[976,'Veluza','Water','Psychic'],
+[977,'Dondozo','Water',null],
+[978,'Tatsugiri','Dragon','Water'],
+[979,'Annihilape','Fighting','Ghost'],
+[980,'Clodsire','Poison','Ground'],
+[981,'Farigiraf','Normal','Psychic'],
+[982,'Dudunsparce','Normal',null],
+[983,'Kingambit','Dark','Steel'],
+[984,'Great Tusk','Ground','Fighting'],
+[985,'Scream Tail','Fairy','Psychic'],
+[986,'Brute Bonnet','Grass','Dark'],
+[987,'Flutter Mane','Ghost','Fairy'],
+[988,'Slither Wing','Bug','Fighting'],
+[989,'Sandy Shocks','Electric','Ground'],
+[990,'Iron Treads','Ground','Steel'],
+[991,'Iron Bundle','Ice','Water'],
+[992,'Iron Hands','Fighting','Electric'],
+[993,'Iron Jugulis','Dark','Flying'],
+[994,'Iron Moth','Fire','Poison'],
+[995,'Iron Thorns','Rock','Electric'],
+[996,'Frigibax','Dragon','Ice'],[997,'Arctibax','Dragon','Ice'],[998,'Baxcalibur','Dragon','Ice'],
+[999,'Gimmighoul','Ghost',null],[1000,'Gholdengo','Steel','Ghost'],
+[1001,'Wo-Chien','Dark','Grass'],[1002,'Chien-Pao','Dark','Ice'],
+[1003,'Ting-Lu','Dark','Ground'],[1004,'Chi-Yu','Dark','Fire'],
+[1005,'Roaring Moon','Dragon','Dark'],[1006,'Iron Valiant','Fairy','Fighting'],
+[1007,'Koraidon','Fighting','Dragon'],[1008,'Miraidon','Electric','Dragon'],
+[1009,'Walking Wake','Water','Dragon'],[1010,'Iron Leaves','Grass','Psychic'],
+];
+
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+function typeColor(t){return TC[t]?TC[t].c:'#888'}
+function typeBg(t){return TC[t]?TC[t].bg:'#111'}
+function typeDark(t){return TC[t]?TC[t].bg:'#111'}
+
+function pill(type,big=false){
+  const c=typeColor(type),b=typeBg(type);
+  return `<span class="mini-badge" style="background:${c};color:${b}">${type}</span>`;
+}
+
+function calcMatchup(t1,t2){
+  const r={};
+  TYPES.forEach(atk=>{
+    let m=1;
+    if(CHART[t1].immune.includes(atk)||(t2&&CHART[t2].immune.includes(atk))){r[atk]=0;return}
+    if(CHART[t1].weak.includes(atk))m*=2;
+    if(CHART[t1].resist.includes(atk))m*=0.5;
+    if(t2){if(CHART[t2].weak.includes(atk))m*=2;if(CHART[t2].resist.includes(atk))m*=0.5}
+    r[atk]=m;
+  });
+  return r;
+}
+
+function spriteUrl(id){
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+}
+
+function numStr(n){return String(n).padStart(4,'0')}
+
+// ─── POKEDEX ───────────────────────────────────────────────────────────────
+let activeTypeFilter='';
+let selectedPoke=null;
+
+// Build type filters
+const filterRow=document.getElementById('type-filters');
+TYPES.forEach(t=>{
+  const c=typeColor(t),b=typeBg(t);
+  filterRow.innerHTML+=`<div class="filter-pill" style="background:${c};color:${b}" onclick="setTypeFilter('${t}',this)">${t}</div>`;
+});
+
+function setTypeFilter(type,el){
+  activeTypeFilter=type;
+  document.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+}
+
+function onSearch(){renderGrid()}
+
+let renderTimeout=null;
+function renderGrid(){
+  clearTimeout(renderTimeout);
+  renderTimeout=setTimeout(_renderGrid,80);
+}
+
+function _renderGrid(){
+  const q=document.getElementById('dex-search').value.toLowerCase().trim();
+  const filtered=POKEDEX.filter(([id,name,t1,t2])=>{
+    const matchQ=!q||name.toLowerCase().includes(q)||String(id).includes(q);
+    const matchT=!activeTypeFilter||(t1===activeTypeFilter||t2===activeTypeFilter);
+    return matchQ&&matchT;
+  });
+
+  document.getElementById('search-count').textContent=filtered.length?filtered.length+' found':'';
+  const grid=document.getElementById('poke-grid');
+  const none=document.getElementById('no-results');
+
+  if(filtered.length===0){grid.innerHTML='';none.style.display='block';return}
+  none.style.display='none';
+
+  // Show first 120 for performance
+  const show=filtered.slice(0,120);
+  grid.innerHTML=show.map(([id,name,t1,t2])=>{
+    const sel=selectedPoke===id?'selected':'';
+    return `<div class="poke-card ${sel}" onclick="selectPoke(${id})" data-id="${id}">
+      <div class="poke-num">#${numStr(id)}</div>
+      <img class="poke-sprite" src="${spriteUrl(id)}" alt="${name}" onerror="this.style.display='none'" loading="lazy">
+      <div class="poke-name">${name}</div>
+      <div class="poke-types">${pill(t1)}${t2?pill(t2):''}</div>
+    </div>`;
+  }).join('');
+  if(filtered.length>120){
+    grid.innerHTML+=`<div style="grid-column:1/-1;text-align:center;padding:16px;color:var(--muted);font-size:13px">...และอีก ${filtered.length-120} ตัว กรอกชื่อเพื่อค้นหาเพิ่ม</div>`;
+  }
+}
+
+function selectPoke(id){
+  const poke=POKEDEX.find(p=>p[0]===id);
+  if(!poke)return;
+  if(selectedPoke===id){selectedPoke=null;document.getElementById('poke-detail').classList.remove('show');renderGrid();return}
+  selectedPoke=id;
+  const [pid,name,t1,t2]=poke;
+
+  const mu=calcMatchup(t1,t2);
+  const cats=[
+    {m:'×4',label:'4× Weak',cls:'cat-4x',filter:m=>m===4},
+    {m:'×2',label:'2× Weak',cls:'cat-2x',filter:m=>m===2},
+    {m:'½',label:'Resist',cls:'cat-half',filter:m=>m===0.5},
+    {m:'¼',label:'Double Resist',cls:'cat-quarter',filter:m=>m===0.25},
+    {m:'0',label:'Immune',cls:'cat-0x',filter:m=>m===0},
+  ];
+
+  const matchHtml=cats.map(cat=>{
+    const ts=TYPES.filter(t=>cat.filter(mu[t]));
+    if(!ts.length)return'';
+    return`<div class="match-box ${cat.cls}">
+      <div class="match-box-title"><span style="font-family:'IBM Plex Mono',monospace">${cat.m}</span> ${cat.label}</div>
+      <div class="match-chips">${ts.map(t=>`<span class="m-chip" style="background:${typeColor(t)};color:${typeBg(t)}">${t}</span>`).join('')}</div>
+    </div>`;
+  }).join('');
+
+  const detail=document.getElementById('poke-detail');
+  detail.innerHTML=`<div class="detail-inner">
+    <div class="detail-left">
+      <img src="${spriteUrl(pid)}" alt="${name}" onerror="this.style.display='none'" width="100" height="100">
+    </div>
+    <div class="detail-right">
+      <div class="detail-num">#${numStr(pid)}</div>
+      <div class="detail-name">${name}</div>
+      <div class="detail-types">${
+        `<span class="detail-badge" style="background:${typeColor(t1)};color:${typeBg(t1)}">${t1}</span>`+
+        (t2?`<span class="detail-badge" style="background:${typeColor(t2)};color:${typeBg(t2)}">${t2}</span>`:'')
+      }</div>
+      <button class="send-checker-btn" onclick="sendToChecker('${t1}','${t2||''}')">⚔️ ดูใน Type Checker</button>
+    </div>
+  </div>
+  <div class="detail-matchup"><div class="match-row">${matchHtml||'<span style="color:var(--muted);font-size:13px">ไม่มีจุดอ่อนพิเศษ</span>'}</div></div>`;
+  detail.classList.add('show');
+  detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+  renderGrid();
+}
+
+function sendToChecker(t1,t2){
+  s1=t1||null; s2=t2||null;
+  renderSlots(); renderCheckerResults(); updateSelected();
+  switchTab('checker');
+}
+
+// ─── TYPE CHECKER ──────────────────────────────────────────────────────────
+let s1=null,s2=null,dragging=null,pendingSlot=null;
+
+const pal=document.getElementById('checker-palette');
+TYPES.forEach(type=>{
+  const c=typeColor(type),b=typeBg(type);
+  const el=document.createElement('div');
+  el.className='type-pill'; el.id='cpill-'+type;
+  el.textContent=type;
+  el.style.background=c; el.style.color=b;
+  el.draggable=true;
+  el.addEventListener('dragstart',e=>{dragging=type;setTimeout(()=>el.classList.add('dragging'),0);e.dataTransfer.setData('text/plain',type)});
+  el.addEventListener('dragend',()=>{el.classList.remove('dragging');dragging=null});
+  el.addEventListener('click',()=>onPillClick(type));
+  pal.appendChild(el);
+});
+
+function onPillClick(type){
+  if(pendingSlot){assignType(pendingSlot,type);pendingSlot=null;clearHL();return}
+  if(!s1)assignType(1,type);
+  else if(!s2&&s1!==type)assignType(2,type);
+}
+
+function onSlotClick(n){
+  const cur=n===1?s1:s2;
+  if(cur)return;
+  pendingSlot=n;
+  clearHL();
+  document.getElementById('slot'+n).classList.add('pending');
+}
+
+function clearHL(){
+  document.getElementById('slot1').classList.remove('pending');
+  document.getElementById('slot2').classList.remove('pending');
+  pendingSlot=null;
+}
+
+function oDO(e){e.preventDefault();e.currentTarget.classList.add('drag-over')}
+function oDL(e){e.currentTarget.classList.remove('drag-over')}
+function oDP(e,n){e.preventDefault();e.currentTarget.classList.remove('drag-over');const t=e.dataTransfer.getData('text/plain')||dragging;if(t)assignType(n,t)}
+
+function assignType(n,type){
+  if(n===1&&s2===type){s2=null}
+  if(n===2&&s1===type)return;
+  if(n===1)s1=type; else s2=type;
+  clearHL();
+  renderSlots(); renderCheckerResults(); updateSelected();
+}
+
+function removeType(n){if(n===1)s1=null;else s2=null;renderSlots();renderCheckerResults();updateSelected()}
+function clearChecker(){s1=null;s2=null;clearHL();renderSlots();renderCheckerResults();updateSelected()}
+
+function updateSelected(){
+  TYPES.forEach(t=>{
+    const el=document.getElementById('cpill-'+t);
+    if(el)(t===s1||t===s2)?el.classList.add('selected'):el.classList.remove('selected');
+  });
+}
+
+function badgeH(type,n){
+  const c=typeColor(type),b=typeBg(type);
+  return`<div class="slot-badge" style="background:${c};color:${b}" onclick="event.stopPropagation();removeType(${n})">${type}<span class="rm-btn">✕</span></div>`;
+}
+
+function renderSlots(){
+  document.getElementById('slot1-content').innerHTML=s1?badgeH(s1,1):`<div class="drop-empty"><span class="ei">⬡</span>ลาก type มาวางที่นี่<br>หรือกดเพื่อเลือก</div>`;
+  document.getElementById('slot2-content').innerHTML=s2?badgeH(s2,2):`<div class="drop-empty"><span class="ei">⬡</span>Dual-Type Pokemon<br>ใส่ type ที่ 2 ที่นี่</div>`;
+}
+
+function renderCheckerResults(){
+  const el=document.getElementById('checker-results');
+  if(!s1){el.innerHTML=`<div class="result-placeholder"><span class="rp-icon">⬡</span>เลือก Type 1 เพื่อดูผล</div>`;return}
+  const mu=calcMatchup(s1,s2);
+  const cats=[
+    {mult:'×4',label:'4× Weak',cls:'cat-4x',f:m=>m===4},
+    {mult:'×2',label:'2× Weak',cls:'cat-2x',f:m=>m===2},
+    {mult:'½×',label:'½ Resist',cls:'cat-half',f:m=>m===0.5},
+    {mult:'¼×',label:'¼ Resist',cls:'cat-quarter',f:m=>m===0.25},
+    {mult:'0×',label:'Immune',cls:'cat-0x',f:m=>m===0},
+    {mult:'1×',label:'Neutral',cls:'cat-1x',f:m=>m===1},
+  ];
+  let combo=`<div class="combo-display"><div class="slot-badge" style="background:${typeColor(s1)};color:${typeBg(s1)}">${s1}</div>`;
+  if(s2)combo+=`<span class="combo-plus">+</span><div class="slot-badge" style="background:${typeColor(s2)};color:${typeBg(s2)}">${s2}</div>`;
+  combo+=`</div>`;
+  let grid=`<div class="result-grid">`;
+  cats.forEach(cat=>{
+    const ts=TYPES.filter(t=>cat.f(mu[t]));
+    if(!ts.length&&cat.mult==='1×')return;
+    grid+=`<div class="result-cat ${cat.cls}"><div class="result-cat-title"><span class="mult">${cat.mult}</span>${cat.label}</div><div class="result-chips">`;
+    if(!ts.length)grid+=`<span class="empty-cat">—</span>`;
+    else ts.forEach(t=>grid+=`<span class="r-chip" style="background:${typeColor(t)};color:${typeBg(t)}">${t}</span>`);
+    grid+=`</div></div>`;
+  });
+  grid+=`</div>`;
+  el.innerHTML=combo+grid;
+}
+
+// ─── TAB SWITCH ────────────────────────────────────────────────────────────
+function switchTab(tab){
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['dex','checker'][i]===tab));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+renderGrid();
+renderSlots();
+renderCheckerResults();
+</script>
+</body>
+</html>
