@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>Pokédex & Type Checker — Legends Z-A</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Saira+Condensed:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0c12;--surf:#111520;--surf2:#181d2e;
+  --bd:rgba(255,255,255,0.07);--bd2:rgba(255,255,255,0.14);
+  --tx:#e8eaf2;--mu:#6b7194;--ac:#5b8eff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(91,142,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(91,142,255,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:100;background:rgba(10,12,18,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd2);display:flex;justify-content:center}
+.ntab{flex:1;max-width:200px;padding:14px 8px;text-align:center;font-family:'Saira Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;user-select:none}
+.ntab.on{color:var(--ac);border-bottom-color:var(--ac)}
+
+/* PAGES */
+.pg{display:none;position:relative;z-index:1;padding:20px 16px 80px;max-width:900px;margin:0 auto}
+.pg.on{display:block}
+
+/* HEADER */
+.ph{text-align:center;margin-bottom:24px;padding-top:8px}
+.ptag{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ac);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px}
+.ptitle{font-family:'Saira Condensed',sans-serif;font-size:clamp(28px,8vw,48px);font-weight:900;letter-spacing:-1px;line-height:1;color:#fff;text-transform:uppercase}
+.ptitle span{color:var(--ac)}
+.psub{font-size:13px;color:var(--mu);margin-top:6px}
+
+/* SEARCH */
+.sw{position:relative;margin-bottom:14px}
+.si{width:100%;background:var(--surf);border:1.5px solid var(--bd2);border-radius:12px;padding:12px 70px 12px 44px;color:var(--tx);font-family:'Rajdhani',sans-serif;font-size:16px;outline:none;transition:border-color .2s}
+.si:focus{border-color:var(--ac)}
+.si::placeholder{color:var(--mu)}
+.sico{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mu);font-size:18px;pointer-events:none}
+.scnt{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--mu)}
+
+/* TYPE FILTER */
+.frow{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+.fp{padding:4px 10px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:600;letter-spacing:.4px;cursor:pointer;border:1.5px solid transparent;transition:all .15s;text-transform:uppercase;user-select:none;-webkit-tap-highlight-color:transparent}
+.fp:hover{transform:scale(1.05)}
+.fp.on{border-color:rgba(255,255,255,.55)!important}
+.fall{background:var(--surf2);border-color:var(--bd2)!important;color:var(--tx)}
+.fall.on{color:var(--ac);border-color:var(--ac)!important}
+
+/* POKEMON GRID */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px}
+@media(max-width:480px){.pgrid{grid-template-columns:repeat(2,1fr);gap:7px}}
+
+.pc{background:var(--surf);border:1px solid var(--bd);border-radius:14px;padding:11px 9px;cursor:pointer;transition:all .18s;text-align:center;-webkit-tap-highlight-color:transparent}
+.pc:hover{border-color:var(--bd2);transform:translateY(-2px)}
+.pc.sel{border-color:var(--ac);background:rgba(91,142,255,.08)}
+.pnum{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);margin-bottom:3px}
+.psp{width:68px;height:68px;object-fit:contain;image-rendering:pixelated;margin:0 auto 3px;display:block}
+.pnm{font-family:'Saira Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:capitalize;margin-bottom:5px}
+.ptyp{display:flex;gap:3px;justify-content:center;flex-wrap:wrap}
+.tb{padding:2px 7px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+
+/* DETAIL PANEL */
+.det{background:var(--surf);border:1.5px solid var(--bd2);border-radius:16px;padding:16px;margin-bottom:14px;display:none}
+.det.on{display:block;animation:fu .22s ease}
+@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.dhead{display:flex;gap:14px;align-items:flex-start;margin-bottom:0}
+@media(max-width:440px){.dhead{flex-direction:column;align-items:center;text-align:center}}
+.dsp{width:96px;height:96px;object-fit:contain;image-rendering:pixelated;flex-shrink:0}
+.dinfo{flex:1;min-width:0}
+.dnum{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--mu);margin-bottom:2px}
+.dnm{font-family:'Saira Condensed',sans-serif;font-size:26px;font-weight:900;text-transform:capitalize;line-height:1.1}
+.dtyp{display:flex;gap:5px;margin:6px 0 10px;flex-wrap:wrap}
+@media(max-width:440px){.dtyp{justify-content:center}}
+.dtb{padding:4px 13px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+.chkbtn{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .15s;text-transform:uppercase;-webkit-tap-highlight-color:transparent}
+.chkbtn:hover{background:#4070ee}
+
+/* BUILD TABS */
+.btabs{display:flex;border-bottom:1px solid var(--bd2);margin-top:14px}
+.btt{padding:7px 14px;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.btt.on{color:var(--ac);border-bottom-color:var(--ac)}
+.bpanel{display:none;padding-top:12px}
+.bpanel.on{display:block;animation:fu .2s ease}
+
+/* WEAKNESS BOX */
+.wrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}
+@media(max-width:400px){.wrow{grid-template-columns:1fr 1fr}}
+.wbox{border-radius:11px;padding:9px 11px;border:1px solid var(--bd)}
+.wbtit{font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.wbtit .wm{font-family:'IBM Plex Mono',monospace;font-size:14px}
+.wchips{display:flex;flex-wrap:wrap;gap:3px}
+.wc{padding:2px 7px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase}
+.w4x{background:rgba(226,75,74,.1);border-color:rgba(226,75,74,.32)}.w4x .wbtit{color:#ff6b6a}
+.w2x{background:rgba(239,159,39,.08);border-color:rgba(239,159,39,.28)}.w2x .wbtit{color:#f5a832}
+.wh{background:rgba(93,202,165,.08);border-color:rgba(93,202,165,.28)}.wh .wbtit{color:#5dcaa5}
+.wq{background:rgba(97,196,89,.1);border-color:rgba(97,196,89,.35)}.wq .wbtit{color:#97c459}
+.wi{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.14)}.wi .wbtit{color:#888}
+
+/* BUILD CONTENT */
+.bsec{margin-bottom:13px}
+.blbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:7px}
+
+.natrow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px}
+.natnm{font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:700;color:#fff}
+.nst{font-size:11px;padding:2px 7px;border-radius:6px;font-family:'IBM Plex Mono',monospace}
+.nup{background:rgba(95,220,130,.14);color:#5fdc82;border:1px solid rgba(95,220,130,.28)}
+.ndn{background:rgba(255,107,107,.11);color:#ff8a8a;border:1px solid rgba(255,107,107,.22)}
+
+.abbox{background:rgba(91,142,255,.07);border:1px solid rgba(91,142,255,.2);border-radius:10px;padding:10px 12px}
+.abnm{font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--ac);margin-bottom:3px}
+.abdsc{font-size:12px;color:var(--mu);line-height:1.5}
+
+.mvlist{display:flex;flex-direction:column;gap:5px}
+.mvi{display:flex;align-items:center;gap:7px;background:var(--surf2);border-radius:8px;padding:7px 10px}
+.mvdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mvnm{font-family:'Saira Condensed',sans-serif;font-size:15px;font-weight:700;flex:1;min-width:0}
+.mvtp{padding:2px 7px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;white-space:nowrap}
+.mvrl{font-size:10px;color:var(--mu);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+@media(max-width:360px){.mvrl{display:none}}
+
+.tipgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:500px){.tipgrid{grid-template-columns:1fr}}
+.tipbox{border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.6;border:1px solid}
+.tipbox.bt{background:rgba(226,75,74,.07);border-color:rgba(226,75,74,.2);color:#ffb3b3}
+.tipbox.fm{background:rgba(95,196,89,.07);border-color:rgba(95,196,89,.2);color:#a8e89a}
+.tipbox strong{display:block;font-family:'Saira Condensed',sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.tipbox.bt strong{color:#ff7070}
+.tipbox.fm strong{color:#7fdc72}
+
+.nobuild{text-align:center;padding:24px 0;color:var(--mu);font-size:13px}
+.nobuild span{font-size:28px;margin-bottom:8px;opacity:.3;display:block}
+
+/* NO RESULTS */
+.nores{text-align:center;padding:48px 0;color:var(--mu);display:none}
+.nores span{font-size:40px;margin-bottom:10px;opacity:.3;display:block}
+
+/* TYPE CHECKER PAGE */
+.tipbar{background:rgba(91,142,255,.08);border:1px solid rgba(91,142,255,.2);border-radius:10px;padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ac);margin-bottom:14px;letter-spacing:.5px;line-height:1.5}
+
+.dlayout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+@media(max-width:460px){.dlayout{grid-template-columns:1fr}}
+
+.dzone{background:var(--surf);border:1.5px dashed var(--bd2);border-radius:16px;padding:13px;min-height:108px;transition:all .2s;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.dzone.ov,.dzone.pend{border-color:var(--ac);background:rgba(91,142,255,.07)}
+.dzlbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:9px}
+.dzslot{min-height:58px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:7px}
+.dzemp{font-size:13px;color:var(--mu);text-align:center;line-height:1.6;pointer-events:none}
+.dzemp em{display:block;font-size:22px;margin-bottom:3px;opacity:.35;font-style:normal}
+
+.sbadge{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:17px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:transform .15s;text-transform:uppercase}
+.sbadge:hover{transform:scale(1.05)}
+.rmbtn{font-size:14px;opacity:.7;line-height:1}
+.rmbtn:hover{opacity:1}
+
+.pal{background:var(--surf);border:1px solid var(--bd);border-radius:16px;padding:13px;margin-bottom:14px}
+.pallbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:9px}
+.palrow{display:flex;flex-wrap:wrap;gap:5px}
+.tpill{padding:5px 12px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.4px;cursor:pointer;user-select:none;transition:transform .12s,box-shadow .12s;text-transform:uppercase;border:2px solid transparent;-webkit-tap-highlight-color:transparent}
+.tpill:hover{transform:translateY(-2px) scale(1.06);box-shadow:0 5px 18px rgba(0,0,0,.5)}
+.tpill:active{transform:scale(.96)}
+.tpill.drag{opacity:.3}
+.tpill.sel{border-color:rgba(255,255,255,.6);box-shadow:0 0 0 2px rgba(255,255,255,.18)}
+
+.rsec{background:var(--surf);border:1px solid var(--bd);border-radius:16px;padding:15px}
+.rhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:7px}
+.rtit{font-family:'Saira Condensed',sans-serif;font-size:19px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.clrbtn{background:transparent;border:1px solid var(--bd2);color:var(--mu);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 11px;border-radius:6px;cursor:pointer;transition:all .15s;letter-spacing:1px}
+.clrbtn:hover{border-color:var(--tx);color:var(--tx)}
+.rph{text-align:center;padding:34px 0;color:var(--mu);font-size:14px}
+.rph span{font-size:32px;margin-bottom:9px;opacity:.25;display:block}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:9px}
+@media(max-width:390px){.rgrid{grid-template-columns:1fr 1fr}}
+.rcat{border-radius:11px;padding:9px 11px;border:1px solid var(--bd);animation:fu .2s ease}
+.rcat:nth-child(2){animation-delay:.04s}.rcat:nth-child(3){animation-delay:.08s}.rcat:nth-child(4){animation-delay:.12s}
+.rcttit{font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.rcttit .rm{font-family:'IBM Plex Mono',monospace;font-size:14px}
+.rchips{display:flex;flex-wrap:wrap;gap:3px}
+.rc{padding:3px 8px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase}
+.ecat{color:var(--mu);font-size:11px;font-style:italic}
+.comb{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:13px;flex-wrap:wrap}
+.cpl{font-size:20px;color:var(--mu)}
+
+.rc4x{background:rgba(226,75,74,.1);border-color:rgba(226,75,74,.32)}.rc4x .rcttit{color:#ff6b6a}
+.rc2x{background:rgba(239,159,39,.08);border-color:rgba(239,159,39,.28)}.rc2x .rcttit{color:#f5a832}
+.rch{background:rgba(93,202,165,.08);border-color:rgba(93,202,165,.28)}.rch .rcttit{color:#5dcaa5}
+.rcq{background:rgba(97,196,89,.1);border-color:rgba(97,196,89,.35)}.rcq .rcttit{color:#97c459}
+.rc0{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.14)}.rc0 .rcttit{color:#888}
+.rc1x .rcttit{color:var(--mu)}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="ntab on" onclick="goTab('dex',this)">📖 Pokédex</div>
+  <div class="ntab" onclick="goTab('chk',this)">⚔️ Type Checker</div>
+</nav>
+
+<!-- POKEDEX -->
+<div class="pg on" id="pg-dex">
+  <div class="ph">
+    <div class="ptag">National · Gen I–IX</div>
+    <div class="ptitle">Pokédex <span>Search</span></div>
+    <div class="psub">ค้นหา Pokémon · ดู Type / Weakness / Best Build</div>
+  </div>
+  <div class="sw">
+    <span class="sico">🔍</span>
+    <input class="si" id="dex-q" type="text" placeholder="พิมชื่อหรือเลข เช่น Pikachu, 25, Tyranitar..." oninput="doSearch()" autocomplete="off" spellcheck="false">
+    <span class="scnt" id="scnt"></span>
+  </div>
+  <div class="frow" id="frow"></div>
+  <div class="det" id="det"></div>
+  <div class="pgrid" id="pgrid"></div>
+  <div class="nores" id="nores"><span>🔭</span>ไม่พบ Pokémon ที่ค้นหา</div>
+</div>
+
+<!-- TYPE CHECKER -->
+<div class="pg" id="pg-chk">
+  <div class="ph">
+    <div class="ptag">Legends Z-A · Type Matchup</div>
+    <div class="ptitle">Type <span>Checker</span></div>
+    <div class="psub">Drag & Drop หรือ Tap เพื่อเลือก · รองรับ Dual-Type</div>
+  </div>
+  <div class="tipbar">💡 ลาก type มาวาง หรือ กดช่องก่อน แล้วค่อยกด type · กด ✕ บน badge เพื่อลบ</div>
+  <div class="dlayout">
+    <div class="dzone" id="dz1" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="ddp(event,1)" onclick="dzoneclk(1)">
+      <div class="dzlbl">Type 1</div>
+      <div class="dzslot" id="dz1s"><div class="dzemp"><em>⬡</em>ลาก type มาวางที่นี่<br>หรือกดเพื่อเลือก</div></div>
+    </div>
+    <div class="dzone" id="dz2" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="ddp(event,2)" onclick="dzoneclk(2)">
+      <div class="dzlbl">Type 2 <span style="color:var(--mu);font-size:10px">(optional)</span></div>
+      <div class="dzslot" id="dz2s"><div class="dzemp"><em>⬡</em>Dual-Type Pokemon<br>ใส่ type ที่ 2 ที่นี่</div></div>
+    </div>
+  </div>
+  <div class="pal">
+    <div class="pallbl">18 Types — ลาก หรือ กด เพื่อเลือก</div>
+    <div class="palrow" id="palrow"></div>
+  </div>
+  <div class="rsec">
+    <div class="rhead">
+      <div class="rtit">Matchup Results</div>
+      <button class="clrbtn" onclick="clrChk()">✕ Clear</button>
+    </div>
+    <div id="rout"><div class="rph"><span>⬡</span>เลือก Type 1 เพื่อดูผล</div></div>
+  </div>
+</div>
+
+<script>
+// ── TYPE DATA ──────────────────────────────────────────────────────────────
+var TYPES=['Normal','Fire','Water','Electric','Grass','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
+var TC={
+  Normal:{c:'#9da0a8',b:'#141518'},Fire:{c:'#ff6b35',b:'#1f0800'},Water:{c:'#4fa3e8',b:'#001828'},
+  Electric:{c:'#f5c518',b:'#181300'},Grass:{c:'#5ec44a',b:'#0a1800'},Ice:{c:'#7dd8d4',b:'#001c1b'},
+  Fighting:{c:'#c84b25',b:'#1a0700'},Poison:{c:'#a96bc4',b:'#130818'},Ground:{c:'#d4934a',b:'#1a0f00'},
+  Flying:{c:'#89a9f5',b:'#070e1e'},Psychic:{c:'#f5567c',b:'#1a0008'},Bug:{c:'#8db832',b:'#0e1300'},
+  Rock:{c:'#b5a86a',b:'#191700'},Ghost:{c:'#6660b0',b:'#0a091e'},Dragon:{c:'#4b6ee8',b:'#050b1e'},
+  Dark:{c:'#6b67a8',b:'#0a091e'},Steel:{c:'#a8b8c8',b:'#0e1215'},Fairy:{c:'#e882b0',b:'#1a0011'}
+};
+function tc(t){return TC[t]||{c:'#888',b:'#111'}}
+
+var CHART={
+  Normal:{w:['Fighting'],r:[],i:['Ghost']},
+  Fire:{w:['Water','Ground','Rock'],r:['Fire','Grass','Ice','Bug','Steel','Fairy'],i:[]},
+  Water:{w:['Electric','Grass'],r:['Fire','Water','Ice','Steel'],i:[]},
+  Electric:{w:['Ground'],r:['Electric','Flying','Steel'],i:[]},
+  Grass:{w:['Fire','Ice','Poison','Flying','Bug'],r:['Water','Electric','Grass','Ground'],i:[]},
+  Ice:{w:['Fire','Fighting','Rock','Steel'],r:['Ice'],i:[]},
+  Fighting:{w:['Flying','Psychic','Fairy'],r:['Rock','Bug','Dark'],i:[]},
+  Poison:{w:['Ground','Psychic'],r:['Grass','Fighting','Poison','Bug','Fairy'],i:[]},
+  Ground:{w:['Water','Grass','Ice'],r:['Poison','Rock'],i:['Electric']},
+  Flying:{w:['Electric','Ice','Rock'],r:['Grass','Fighting','Bug'],i:['Ground']},
+  Psychic:{w:['Bug','Ghost','Dark'],r:['Fighting','Psychic'],i:[]},
+  Bug:{w:['Fire','Flying','Rock'],r:['Grass','Fighting','Ground'],i:[]},
+  Rock:{w:['Water','Grass','Fighting','Ground','Steel'],r:['Normal','Fire','Poison','Flying'],i:[]},
+  Ghost:{w:['Ghost','Dark'],r:['Poison','Bug'],i:['Normal','Fighting']},
+  Dragon:{w:['Ice','Dragon','Fairy'],r:['Fire','Water','Electric','Grass'],i:[]},
+  Dark:{w:['Fighting','Bug','Fairy'],r:['Ghost','Dark'],i:['Psychic']},
+  Steel:{w:['Fire','Fighting','Ground'],r:['Normal','Grass','Ice','Flying','Psychic','Bug','Rock','Dragon','Steel','Fairy'],i:['Poison']},
+  Fairy:{w:['Poison','Steel'],r:['Fighting','Bug','Dark'],i:['Dragon']}
+};
+
+function calcMu(t1,t2){
+  var r={};
+  TYPES.forEach(function(atk){
+    var m=1;
+    if(CHART[t1].i.indexOf(atk)>=0||(t2&&CHART[t2].i.indexOf(atk)>=0)){r[atk]=0;return}
+    if(CHART[t1].w.indexOf(atk)>=0)m*=2;
+    if(CHART[t1].r.indexOf(atk)>=0)m*=0.5;
+    if(t2){if(CHART[t2].w.indexOf(atk)>=0)m*=2;if(CHART[t2].r.indexOf(atk)>=0)m*=0.5}
+    r[atk]=m;
+  });
+  return r;
+}
+
+// ── POKEMON DATA ──────────────────────────────────────────────────────────
+// [id, name, type1, type2|null]
+var DEX=[
+[1,'Bulbasaur','Grass','Poison'],[2,'Ivysaur','Grass','Poison'],[3,'Venusaur','Grass','Poison'],
+[4,'Charmander','Fire',null],[5,'Charmeleon','Fire',null],[6,'Charizard','Fire','Flying'],
+[7,'Squirtle','Water',null],[8,'Wartortle','Water',null],[9,'Blastoise','Water',null],
+[10,'Caterpie','Bug',null],[11,'Metapod','Bug',null],[12,'Butterfree','Bug','Flying'],
+[13,'Weedle','Bug','Poison'],[14,'Kakuna','Bug','Poison'],[15,'Beedrill','Bug','Poison'],
+[16,'Pidgey','Normal','Flying'],[17,'Pidgeotto','Normal','Flying'],[18,'Pidgeot','Normal','Flying'],
+[19,'Rattata','Normal',null],[20,'Raticate','Normal',null],[21,'Spearow','Normal','Flying'],[22,'Fearow','Normal','Flying'],
+[23,'Ekans','Poison',null],[24,'Arbok','Poison',null],[25,'Pikachu','Electric',null],[26,'Raichu','Electric',null],
+[27,'Sandshrew','Ground',null],[28,'Sandslash','Ground',null],
+[29,'Nidoran♀','Poison',null],[30,'Nidorina','Poison',null],[31,'Nidoqueen','Poison','Ground'],
+[32,'Nidoran♂','Poison',null],[33,'Nidorino','Poison',null],[34,'Nidoking','Poison','Ground'],
+[35,'Clefairy','Fairy',null],[36,'Clefable','Fairy',null],[37,'Vulpix','Fire',null],[38,'Ninetales','Fire',null],
+[39,'Jigglypuff','Normal','Fairy'],[40,'Wigglytuff','Normal','Fairy'],[41,'Zubat','Poison','Flying'],[42,'Golbat','Poison','Flying'],
+[43,'Oddish','Grass','Poison'],[44,'Gloom','Grass','Poison'],[45,'Vileplume','Grass','Poison'],
+[46,'Paras','Bug','Grass'],[47,'Parasect','Bug','Grass'],[48,'Venonat','Bug','Poison'],[49,'Venomoth','Bug','Poison'],
+[50,'Diglett','Ground',null],[51,'Dugtrio','Ground',null],[52,'Meowth','Normal',null],[53,'Persian','Normal',null],
+[54,'Psyduck','Water',null],[55,'Golduck','Water',null],[56,'Mankey','Fighting',null],[57,'Primeape','Fighting',null],
+[58,'Growlithe','Fire',null],[59,'Arcanine','Fire',null],[60,'Poliwag','Water',null],[61,'Poliwhirl','Water',null],[62,'Poliwrath','Water','Fighting'],
+[63,'Abra','Psychic',null],[64,'Kadabra','Psychic',null],[65,'Alakazam','Psychic',null],
+[66,'Machop','Fighting',null],[67,'Machoke','Fighting',null],[68,'Machamp','Fighting',null],
+[69,'Bellsprout','Grass','Poison'],[70,'Weepinbell','Grass','Poison'],[71,'Victreebel','Grass','Poison'],
+[72,'Tentacool','Water','Poison'],[73,'Tentacruel','Water','Poison'],
+[74,'Geodude','Rock','Ground'],[75,'Graveler','Rock','Ground'],[76,'Golem','Rock','Ground'],
+[77,'Ponyta','Fire',null],[78,'Rapidash','Fire',null],[79,'Slowpoke','Water','Psychic'],[80,'Slowbro','Water','Psychic'],
+[81,'Magnemite','Electric','Steel'],[82,'Magneton','Electric','Steel'],[83,"Farfetch'd",'Normal','Flying'],
+[84,'Doduo','Normal','Flying'],[85,'Dodrio','Normal','Flying'],[86,'Seel','Water',null],[87,'Dewgong','Water','Ice'],
+[88,'Grimer','Poison',null],[89,'Muk','Poison',null],[90,'Shellder','Water',null],[91,'Cloyster','Water','Ice'],
+[92,'Gastly','Ghost','Poison'],[93,'Haunter','Ghost','Poison'],[94,'Gengar','Ghost','Poison'],[95,'Onix','Rock','Ground'],
+[96,'Drowzee','Psychic',null],[97,'Hypno','Psychic',null],[98,'Krabby','Water',null],[99,'Kingler','Water',null],
+[100,'Voltorb','Electric',null],[101,'Electrode','Electric',null],[102,'Exeggcute','Grass','Psychic'],[103,'Exeggutor','Grass','Psychic'],
+[104,'Cubone','Ground',null],[105,'Marowak','Ground',null],[106,'Hitmonlee','Fighting',null],[107,'Hitmonchan','Fighting',null],
+[108,'Lickitung','Normal',null],[109,'Koffing','Poison',null],[110,'Weezing','Poison',null],
+[111,'Rhyhorn','Ground','Rock'],[112,'Rhydon','Ground','Rock'],[113,'Chansey','Normal',null],[114,'Tangela','Grass',null],
+[115,'Kangaskhan','Normal',null],[116,'Horsea','Water',null],[117,'Seadra','Water',null],
+[118,'Goldeen','Water',null],[119,'Seaking','Water',null],[120,'Staryu','Water',null],[121,'Starmie','Water','Psychic'],
+[122,'Mr. Mime','Psychic','Fairy'],[123,'Scyther','Bug','Flying'],[124,'Jynx','Ice','Psychic'],
+[125,'Electabuzz','Electric',null],[126,'Magmar','Fire',null],[127,'Pinsir','Bug',null],[128,'Tauros','Normal',null],
+[129,'Magikarp','Water',null],[130,'Gyarados','Water','Flying'],[131,'Lapras','Water','Ice'],
+[132,'Ditto','Normal',null],[133,'Eevee','Normal',null],[134,'Vaporeon','Water',null],[135,'Jolteon','Electric',null],
+[136,'Flareon','Fire',null],[137,'Porygon','Normal',null],[138,'Omanyte','Rock','Water'],[139,'Omastar','Rock','Water'],
+[140,'Kabuto','Rock','Water'],[141,'Kabutops','Rock','Water'],[142,'Aerodactyl','Rock','Flying'],[143,'Snorlax','Normal',null],
+[144,'Articuno','Ice','Flying'],[145,'Zapdos','Electric','Flying'],[146,'Moltres','Fire','Flying'],
+[147,'Dratini','Dragon',null],[148,'Dragonair','Dragon',null],[149,'Dragonite','Dragon','Flying'],
+[150,'Mewtwo','Psychic',null],[151,'Mew','Psychic',null],
+[152,'Chikorita','Grass',null],[153,'Bayleef','Grass',null],[154,'Meganium','Grass',null],
+[155,'Cyndaquil','Fire',null],[156,'Quilava','Fire',null],[157,'Typhlosion','Fire',null],
+[158,'Totodile','Water',null],[159,'Croconaw','Water',null],[160,'Feraligatr','Water',null],
+[161,'Sentret','Normal',null],[162,'Furret','Normal',null],[163,'Hoothoot','Normal','Flying'],[164,'Noctowl','Normal','Flying'],
+[169,'Crobat','Poison','Flying'],[172,'Pichu','Electric',null],[175,'Togepi','Fairy',null],[176,'Togetic','Fairy','Flying'],
+[179,'Mareep','Electric',null],[180,'Flaaffy','Electric',null],[181,'Ampharos','Electric',null],
+[183,'Marill','Water','Fairy'],[184,'Azumarill','Water','Fairy'],[185,'Sudowoodo','Rock',null],
+[196,'Espeon','Psychic',null],[197,'Umbreon','Dark',null],[198,'Murkrow','Dark','Flying'],[199,'Slowking','Water','Psychic'],
+[200,'Misdreavus','Ghost',null],[202,'Wobbuffet','Psychic',null],[207,'Gligar','Ground','Flying'],[208,'Steelix','Steel','Ground'],
+[212,'Scizor','Bug','Steel'],[213,'Shuckle','Bug','Rock'],[214,'Heracross','Bug','Fighting'],
+[215,'Sneasel','Dark','Ice'],[216,'Teddiursa','Normal',null],[217,'Ursaring','Normal',null],
+[227,'Skarmory','Steel','Flying'],[228,'Houndour','Dark','Fire'],[229,'Houndoom','Dark','Fire'],
+[230,'Kingdra','Water','Dragon'],[233,'Porygon2','Normal',null],
+[243,'Raikou','Electric',null],[244,'Entei','Fire',null],[245,'Suicune','Water',null],
+[246,'Larvitar','Rock','Ground'],[247,'Pupitar','Rock','Ground'],[248,'Tyranitar','Rock','Dark'],
+[249,'Lugia','Psychic','Flying'],[250,'Ho-Oh','Fire','Flying'],[251,'Celebi','Psychic','Grass'],
+[252,'Treecko','Grass',null],[253,'Grovyle','Grass',null],[254,'Sceptile','Grass',null],
+[255,'Torchic','Fire',null],[256,'Combusken','Fire','Fighting'],[257,'Blaziken','Fire','Fighting'],
+[258,'Mudkip','Water',null],[259,'Marshtomp','Water','Ground'],[260,'Swampert','Water','Ground'],
+[261,'Poochyena','Dark',null],[262,'Mightyena','Dark',null],[263,'Zigzagoon','Normal',null],[264,'Linoone','Normal',null],
+[280,'Ralts','Psychic','Fairy'],[281,'Kirlia','Psychic','Fairy'],[282,'Gardevoir','Psychic','Fairy'],
+[302,'Sableye','Dark','Ghost'],[303,'Mawile','Steel','Fairy'],[304,'Aron','Steel','Rock'],[305,'Lairon','Steel','Rock'],[306,'Aggron','Steel','Rock'],
+[309,'Electrike','Electric',null],[310,'Manectric','Electric',null],[315,'Roselia','Grass','Poison'],
+[318,'Carvanha','Water','Dark'],[319,'Sharpedo','Water','Dark'],[328,'Trapinch','Ground',null],[329,'Vibrava','Ground','Dragon'],[330,'Flygon','Ground','Dragon'],
+[333,'Swablu','Normal','Flying'],[334,'Altaria','Dragon','Flying'],[335,'Zangoose','Normal',null],[336,'Seviper','Poison',null],
+[349,'Feebas','Water',null],[350,'Milotic','Water',null],[359,'Absol','Dark',null],[362,'Glalie','Ice',null],
+[371,'Bagon','Dragon',null],[372,'Shelgon','Dragon',null],[373,'Salamence','Dragon','Flying'],
+[374,'Beldum','Steel','Psychic'],[375,'Metang','Steel','Psychic'],[376,'Metagross','Steel','Psychic'],
+[377,'Regirock','Rock',null],[378,'Regice','Ice',null],[379,'Registeel','Steel',null],
+[380,'Latias','Dragon','Psychic'],[381,'Latios','Dragon','Psychic'],
+[382,'Kyogre','Water',null],[383,'Groudon','Ground',null],[384,'Rayquaza','Dragon','Flying'],
+[385,'Jirachi','Steel','Psychic'],[386,'Deoxys','Psychic',null],
+[387,'Turtwig','Grass',null],[388,'Grotle','Grass',null],[389,'Torterra','Grass','Ground'],
+[390,'Chimchar','Fire',null],[391,'Monferno','Fire','Fighting'],[392,'Infernape','Fire','Fighting'],
+[393,'Piplup','Water',null],[394,'Prinplup','Water',null],[395,'Empoleon','Water','Steel'],
+[396,'Starly','Normal','Flying'],[397,'Staravia','Normal','Flying'],[398,'Staraptor','Normal','Flying'],
+[403,'Shinx','Electric',null],[404,'Luxio','Electric',null],[405,'Luxray','Electric',null],
+[407,'Roserade','Grass','Poison'],[425,'Drifloon','Ghost','Flying'],[426,'Drifblim','Ghost','Flying'],
+[427,'Buneary','Normal',null],[428,'Lopunny','Normal',null],[429,'Mismagius','Ghost',null],[430,'Honchkrow','Dark','Flying'],
+[436,'Bronzor','Steel','Psychic'],[437,'Bronzong','Steel','Psychic'],[442,'Spiritomb','Ghost','Dark'],
+[443,'Gible','Dragon','Ground'],[444,'Gabite','Dragon','Ground'],[445,'Garchomp','Dragon','Ground'],
+[447,'Riolu','Fighting',null],[448,'Lucario','Fighting','Steel'],[449,'Hippopotas','Ground',null],[450,'Hippowdon','Ground',null],
+[451,'Skorupi','Poison','Bug'],[452,'Drapion','Poison','Dark'],[453,'Croagunk','Poison','Fighting'],[454,'Toxicroak','Poison','Fighting'],
+[459,'Snover','Grass','Ice'],[460,'Abomasnow','Grass','Ice'],[461,'Weavile','Dark','Ice'],
+[462,'Magnezone','Electric','Steel'],[468,'Togekiss','Fairy','Flying'],[470,'Leafeon','Grass',null],[471,'Glaceon','Ice',null],
+[472,'Gliscor','Ground','Flying'],[473,'Mamoswine','Ice','Ground'],[475,'Gallade','Psychic','Fighting'],
+[478,'Froslass','Ice','Ghost'],[479,'Rotom','Electric','Ghost'],
+[480,'Uxie','Psychic',null],[481,'Mesprit','Psychic',null],[482,'Azelf','Psychic',null],
+[483,'Dialga','Steel','Dragon'],[484,'Palkia','Water','Dragon'],[485,'Heatran','Fire','Steel'],
+[487,'Giratina','Ghost','Dragon'],[491,'Darkrai','Dark',null],[492,'Shaymin','Grass',null],[493,'Arceus','Normal',null],
+[495,'Snivy','Grass',null],[496,'Servine','Grass',null],[497,'Serperior','Grass',null],
+[498,'Tepig','Fire',null],[499,'Pignite','Fire','Fighting'],[500,'Emboar','Fire','Fighting'],
+[501,'Oshawott','Water',null],[502,'Dewott','Water',null],[503,'Samurott','Water',null],
+[509,'Purrloin','Dark',null],[510,'Liepard','Dark',null],[522,'Blitzle','Electric',null],[523,'Zebstrika','Electric',null],
+[529,'Drilbur','Ground',null],[530,'Excadrill','Ground','Steel'],
+[532,'Timburr','Fighting',null],[533,'Gurdurr','Fighting',null],[534,'Conkeldurr','Fighting',null],
+[540,'Sewaddle','Bug','Grass'],[541,'Swadloon','Bug','Grass'],[542,'Leavanny','Bug','Grass'],
+[546,'Cottonee','Grass','Fairy'],[547,'Whimsicott','Grass','Fairy'],[551,'Sandile','Ground','Dark'],[552,'Krokorok','Ground','Dark'],[553,'Krookodile','Ground','Dark'],
+[554,'Darumaka','Fire',null],[555,'Darmanitan','Fire',null],[570,'Zorua','Dark',null],[571,'Zoroark','Dark',null],
+[574,'Gothita','Psychic',null],[575,'Gothorita','Psychic',null],[576,'Gothitelle','Psychic',null],
+[595,'Joltik','Bug','Electric'],[596,'Galvantula','Bug','Electric'],[597,'Ferroseed','Grass','Steel'],[598,'Ferrothorn','Grass','Steel'],
+[607,'Litwick','Ghost','Fire'],[608,'Lampent','Ghost','Fire'],[609,'Chandelure','Ghost','Fire'],
+[610,'Axew','Dragon',null],[611,'Fraxure','Dragon',null],[612,'Haxorus','Dragon',null],
+[624,'Pawniard','Dark','Steel'],[625,'Bisharp','Dark','Steel'],[631,'Heatmor','Fire',null],[632,'Durant','Bug','Steel'],
+[633,'Deino','Dark','Dragon'],[634,'Zweilous','Dark','Dragon'],[635,'Hydreigon','Dark','Dragon'],
+[636,'Larvesta','Bug','Fire'],[637,'Volcarona','Bug','Fire'],
+[638,'Cobalion','Steel','Fighting'],[639,'Terrakion','Rock','Fighting'],[640,'Virizion','Grass','Fighting'],
+[643,'Reshiram','Dragon','Fire'],[644,'Zekrom','Dragon','Electric'],[646,'Kyurem','Dragon','Ice'],
+[650,'Chespin','Grass',null],[651,'Quilladin','Grass',null],[652,'Chesnaught','Grass','Fighting'],
+[653,'Fennekin','Fire',null],[654,'Braixen','Fire',null],[655,'Delphox','Fire','Psychic'],
+[656,'Froakie','Water',null],[657,'Frogadier','Water',null],[658,'Greninja','Water','Dark'],
+[659,'Bunnelby','Normal',null],[660,'Diggersby','Normal','Ground'],
+[661,'Fletchling','Normal','Flying'],[662,'Fletchinder','Fire','Flying'],[663,'Talonflame','Fire','Flying'],
+[664,'Scatterbug','Bug',null],[665,'Spewpa','Bug',null],[666,'Vivillon','Bug','Flying'],
+[669,'Flabébé','Fairy',null],[670,'Floette','Fairy',null],[671,'Florges','Fairy',null],
+[674,'Pancham','Fighting',null],[675,'Pangoro','Fighting','Dark'],[676,'Furfrou','Normal',null],
+[677,'Espurr','Psychic',null],[678,'Meowstic','Psychic',null],
+[679,'Honedge','Steel','Ghost'],[680,'Doublade','Steel','Ghost'],[681,'Aegislash','Steel','Ghost'],
+[682,'Spritzee','Fairy',null],[683,'Aromatisse','Fairy',null],[684,'Swirlix','Fairy',null],[685,'Slurpuff','Fairy',null],
+[686,'Inkay','Dark','Psychic'],[687,'Malamar','Dark','Psychic'],
+[688,'Binacle','Rock','Water'],[689,'Barbaracle','Rock','Water'],
+[690,'Skrelp','Poison','Water'],[691,'Dragalge','Poison','Dragon'],
+[694,'Helioptile','Electric','Normal'],[695,'Heliolisk','Electric','Normal'],
+[696,'Tyrunt','Rock','Dragon'],[697,'Tyrantrum','Rock','Dragon'],
+[698,'Amaura','Rock','Ice'],[699,'Aurorus','Rock','Ice'],
+[700,'Sylveon','Fairy',null],[701,'Hawlucha','Fighting','Flying'],[702,'Dedenne','Electric','Fairy'],[703,'Carbink','Rock','Fairy'],
+[704,'Goomy','Dragon',null],[705,'Sliggoo','Dragon',null],[706,'Goodra','Dragon',null],
+[707,'Klefki','Steel','Fairy'],[708,'Phantump','Ghost','Grass'],[709,'Trevenant','Ghost','Grass'],
+[714,'Noibat','Flying','Dragon'],[715,'Noivern','Flying','Dragon'],
+[716,'Xerneas','Fairy',null],[717,'Yveltal','Dark','Flying'],[718,'Zygarde','Dragon','Ground'],
+[719,'Diancie','Rock','Fairy'],[720,'Hoopa','Psychic','Ghost'],[721,'Volcanion','Fire','Water'],
+[722,'Rowlet','Grass','Flying'],[723,'Dartrix','Grass','Flying'],[724,'Decidueye','Grass','Ghost'],
+[725,'Litten','Fire',null],[726,'Torracat','Fire',null],[727,'Incineroar','Fire','Dark'],
+[728,'Popplio','Water',null],[729,'Brionne','Water',null],[730,'Primarina','Water','Fairy'],
+[734,'Yungoos','Normal',null],[735,'Gumshoos','Normal',null],
+[742,'Cutiefly','Bug','Fairy'],[743,'Ribombee','Bug','Fairy'],
+[744,'Rockruff','Rock',null],[745,'Lycanroc','Rock',null],
+[747,'Mareanie','Poison','Water'],[748,'Toxapex','Poison','Water'],
+[752,'Araquanid','Water','Bug'],[755,'Morelull','Grass','Fairy'],[756,'Shiinotic','Grass','Fairy'],
+[757,'Salandit','Poison','Fire'],[758,'Salazzle','Poison','Fire'],
+[764,'Comfey','Fairy',null],[770,'Palossand','Ghost','Ground'],
+[778,'Mimikyu','Ghost','Fairy'],[782,'Jangmo-o','Dragon',null],[783,'Hakamo-o','Dragon','Fighting'],[784,'Kommo-o','Dragon','Fighting'],
+[785,'Tapu Koko','Electric','Fairy'],[786,'Tapu Lele','Psychic','Fairy'],[787,'Tapu Bulu','Grass','Fairy'],[788,'Tapu Fini','Water','Fairy'],
+[791,'Solgaleo','Psychic','Steel'],[792,'Lunala','Psychic','Ghost'],
+[800,'Necrozma','Psychic',null],[801,'Magearna','Steel','Fairy'],[802,'Marshadow','Fighting','Ghost'],
+[806,'Blacephalon','Fire','Ghost'],[807,'Zeraora','Electric',null],[809,'Melmetal','Steel',null],
+[810,'Grookey','Grass',null],[811,'Thwackey','Grass',null],[812,'Rillaboom','Grass',null],
+[813,'Scorbunny','Fire',null],[814,'Raboot','Fire',null],[815,'Cinderace','Fire',null],
+[816,'Sobble','Water',null],[817,'Drizzile','Water',null],[818,'Inteleon','Water',null],
+[821,'Rookidee','Flying',null],[822,'Corvisquire','Flying',null],[823,'Corviknight','Flying','Steel'],
+[827,'Nickit','Dark',null],[828,'Thievul','Dark',null],
+[829,'Gossifleur','Grass',null],[830,'Eldegoss','Grass',null],
+[833,'Chewtle','Water',null],[834,'Drednaw','Water','Rock'],[835,'Yamper','Electric',null],[836,'Boltund','Electric',null],
+[840,'Applin','Grass','Dragon'],[841,'Flapple','Grass','Dragon'],[842,'Appletun','Grass','Dragon'],
+[848,'Toxel','Electric','Poison'],[849,'Toxtricity','Electric','Poison'],
+[852,'Clobbopus','Fighting',null],[853,'Grapploct','Fighting','Water'],
+[854,'Sinistea','Ghost',null],[855,'Polteageist','Ghost',null],
+[856,'Hatenna','Psychic',null],[857,'Hattrem','Psychic',null],[858,'Hatterene','Psychic','Fairy'],
+[859,'Impidimp','Dark','Fairy'],[860,'Morgrem','Dark','Fairy'],[861,'Grimmsnarl','Dark','Fairy'],
+[863,'Perrserker','Steel',null],[864,'Cursola','Ghost',null],[865,"Sirfetch'd",'Fighting',null],
+[869,'Alcremie','Fairy',null],[877,'Morpeko','Electric','Dark'],
+[878,'Cufant','Steel',null],[879,'Copperajah','Steel',null],
+[884,'Duraludon','Steel','Dragon'],[885,'Dreepy','Dragon','Ghost'],[886,'Drakloak','Dragon','Ghost'],[887,'Dragapult','Dragon','Ghost'],
+[888,'Zacian','Fairy',null],[889,'Zamazenta','Fighting',null],[890,'Eternatus','Poison','Dragon'],
+[891,'Kubfu','Fighting',null],[892,'Urshifu','Fighting','Dark'],
+[894,'Regieleki','Electric',null],[895,'Regidrago','Dragon',null],
+[898,'Calyrex','Psychic','Grass'],
+[906,'Sprigatito','Grass',null],[907,'Floragato','Grass',null],[908,'Meowscarada','Grass','Dark'],
+[909,'Fuecoco','Fire',null],[910,'Crocalor','Fire',null],[911,'Skeledirge','Fire','Ghost'],
+[912,'Quaxly','Water',null],[913,'Quaxwell','Water',null],[914,'Quaquaval','Water','Fighting'],
+[915,'Lechonk','Normal',null],[916,'Oinkologne','Normal',null],
+[921,'Pawmi','Electric',null],[922,'Pawmo','Electric','Fighting'],[923,'Pawmot','Electric','Fighting'],
+[926,'Fidough','Fairy',null],[927,'Dachsbun','Fairy',null],
+[932,'Nacli','Rock',null],[933,'Naclstack','Rock',null],[934,'Garganacl','Rock',null],
+[935,'Charcadet','Fire',null],[936,'Armarouge','Fire','Psychic'],[937,'Ceruledge','Fire','Ghost'],
+[940,'Wattrel','Electric','Flying'],[941,'Kilowattrel','Electric','Flying'],
+[942,'Maschiff','Dark',null],[943,'Mabosstiff','Dark',null],
+[946,'Bramblin','Grass','Ghost'],[947,'Brambleghast','Grass','Ghost'],
+[951,'Capsakid','Grass',null],[952,'Scovillain','Grass','Fire'],
+[957,'Tinkatink','Fairy','Steel'],[958,'Tinkatuff','Fairy','Steel'],[959,'Tinkaton','Fairy','Steel'],
+[963,'Finizen','Water',null],[964,'Palafin','Water',null],
+[965,'Varoom','Steel','Poison'],[966,'Revavroom','Steel','Poison'],
+[969,'Glimmet','Rock','Poison'],[970,'Glimmora','Rock','Poison'],
+[971,'Greavard','Ghost',null],[972,'Houndstone','Ghost',null],
+[973,'Flamigo','Flying','Fighting'],[976,'Veluza','Water','Psychic'],[977,'Dondozo','Water',null],
+[978,'Tatsugiri','Dragon','Water'],[979,'Annihilape','Fighting','Ghost'],[980,'Clodsire','Poison','Ground'],
+[983,'Kingambit','Dark','Steel'],
+[996,'Frigibax','Dragon','Ice'],[997,'Arctibax','Dragon','Ice'],[998,'Baxcalibur','Dragon','Ice'],
+[999,'Gimmighoul','Ghost',null],[1000,'Gholdengo','Steel','Ghost'],
+[1001,'Wo-Chien','Dark','Grass'],[1002,'Chien-Pao','Dark','Ice'],[1003,'Ting-Lu','Dark','Ground'],[1004,'Chi-Yu','Dark','Fire'],
+[1005,'Roaring Moon','Dragon','Dark'],[1006,'Iron Valiant','Fairy','Fighting'],
+[1007,'Koraidon','Fighting','Dragon'],[1008,'Miraidon','Electric','Dragon'],
+];
+
+// ── BUILD DATA (Game8 Legends Z-A) ─────────────────────────────────────────
+// natures:[{nm,up,dn}], ab:{nm,ds}, mv:[{nm,tp,rl}], bt(battle tip), fm(farm tip)
+var BUILDS={
+  3:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Calm',up:'Sp.Def',dn:'Atk'}],
+     ab:{nm:'Overgrow',ds:'Boosts Grass moves by 50% when HP is below 1/3.'},
+     mv:[{nm:'Petal Blizzard',tp:'Grass',rl:'STAB'},{nm:'Sludge Bomb',tp:'Poison',rl:'STAB coverage'},{nm:'Synthesis',tp:'Grass',rl:'Recovery'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'}],
+     bt:'Venusaur Bulky Special Attacker Sp.Atk ดี ใช้ Sludge Bomb โจมตี Fairy-type Mega Venusaur มี Thick Fat ทน Fire/Ice',
+     fm:'ใช้ Petal Blizzard + Synthesis ฟื้นเลือดระหว่างสู้กลุ่มศัตรู เหมาะ zone ที่มี Water/Rock/Ground'},
+  6:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+     ab:{nm:'Blaze',ds:'Boosts Fire moves by 50% when HP is below 1/3.'},
+     mv:[{nm:'Flare Blitz',tp:'Fire',rl:'STAB physical'},{nm:'Dragon Claw',tp:'Dragon',rl:'Coverage'},{nm:'Thunder Punch',tp:'Electric',rl:'Anti-Water'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'}],
+     bt:'Mega Charizard X (Dragon/Fire) มี Tough Claws บูสต์ contact moves Charizard Y ใช้ Drought + Solar Beam เป็น Special attacker แทน',
+     fm:'บินข้าม zone ได้ไว Flare Blitz กวาดศัตรู Bug/Grass/Ice ได้ง่ายใน 1-2 hit'},
+  9:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Bold',up:'Def',dn:'Atk'}],
+     ab:{nm:'Torrent',ds:'Boosts Water moves by 50% when HP is below 1/3.'},
+     mv:[{nm:'Hydro Pump',tp:'Water',rl:'STAB nuke'},{nm:'Ice Beam',tp:'Ice',rl:'Coverage'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Flash Cannon',tp:'Steel',rl:'Anti-Fairy'}],
+     bt:'Mega Blastoise Special Tank มี Mega Launcher บูสต์ pulse/ball moves Hydro Pump + Ice Beam ครอบคลุมกว้าง',
+     fm:'ทนทาน ใช้ Hydro Pump กวาด Fire/Rock/Ground zone ได้รวดเร็ว'},
+  25:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+      ab:{nm:'Static',ds:'30% chance to paralyze attacker on contact.'},
+      mv:[{nm:'Thunderbolt',tp:'Electric',rl:'STAB reliable'},{nm:'Volt Tackle',tp:'Electric',rl:'STAB power'},{nm:'Iron Tail',tp:'Steel',rl:'Anti-Fairy/Rock'},{nm:'Quick Attack',tp:'Normal',rl:'Priority'}],
+      bt:'Speed สูง ใช้ Thunderbolt เป็นหลัก Light Ball ทำให้ Atk/Sp.Atk x2 Volt Tackle ใช้กับศัตรูอ่อน',
+      fm:'เหมาะ farm ศัตรู Water/Flying ที่อ่อนต่อ Electric ทำให้จบเร็ว'},
+  65:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+      ab:{nm:'Synchronize',ds:'Passes burn, poison, or paralysis back to the attacker.'},
+      mv:[{nm:'Psyshock',tp:'Psychic',rl:'STAB hits Def'},{nm:'Shadow Ball',tp:'Ghost',rl:'Coverage'},{nm:'Focus Blast',tp:'Fighting',rl:'Anti-Dark/Steel'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+      bt:'Mega Alakazam Sp.Atk สูงมาก ใช้ Calm Mind setup แล้วกด Psyshock ทำลายทุกอย่าง Trace copy ability ศัตรูได้ก่อน Mega',
+      fm:'จบด้วย Psyshock ได้ไวมาก Teleport เคลื่อนที่เร็ว เหมาะ farm หลายจุด'},
+  94:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+      ab:{nm:'Cursed Body',ds:'30% chance to disable a move that makes contact.'},
+      mv:[{nm:'Shadow Ball',tp:'Ghost',rl:'STAB'},{nm:'Sludge Wave',tp:'Poison',rl:'STAB coverage'},{nm:'Hypnosis',tp:'Psychic',rl:'Status/Setup'},{nm:'Perish Song',tp:'Normal',rl:'Utility'}],
+      bt:'Gengar เร็วมาก ใช้ Hypnosis ทำให้ศัตรูหลับก่อน Mega Gengar มี Shadow Tag กักศัตรูไว้ + Perish Song บังคับ KO',
+      fm:'ใช้ Hypnosis หยุดศัตรูจับง่าย เหมาะ farm ใน zone ที่มี Psychic/Ghost-type'},
+  130:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Intimidate',ds:'Lowers opponent Attack by 1 stage on entry.'},
+       mv:[{nm:'Waterfall',tp:'Water',rl:'STAB physical'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Ice Fang',tp:'Ice',rl:'Coverage'},{nm:'Dragon Rush',tp:'Dragon',rl:'Power move'}],
+       bt:'Mega Gyarados (S-Tier Ranked) Water/Dark ใช้ Waterfall + Earthquake ทำลายกลุ่มศัตรู Dragon Rush หลบหลีกและโจมตี Mold Breaker ignore abilities',
+       fm:'ว่ายน้ำข้าม zone ได้ไว Waterfall กวาด Fire/Rock/Ground ง่ายมาก'},
+  149:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Multiscale',ds:'Halves damage when at full HP.'},
+       mv:[{nm:'Outrage',tp:'Dragon',rl:'STAB nuke'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Fire Punch',tp:'Fire',rl:'Anti-Steel/Ice'},{nm:'Thunder Punch',tp:'Electric',rl:'Coverage'}],
+       bt:'Mega Dragonite (A-Tier) มี Multiscale ทน hit แรกได้ ใช้ Outrage ทำลายทุกอย่าง Earthquake สำหรับ Steel-type',
+       fm:'บินข้าม zone ได้ไว Outrage กวาดศัตรูกลุ่มโดยไม่สนใจ type มาก'},
+  150:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Pressure',ds:'Forces opponents to use 2 PP per move.'},
+       mv:[{nm:'Psystrike',tp:'Psychic',rl:'STAB hits Def'},{nm:'Ice Beam',tp:'Ice',rl:'Coverage'},{nm:'Flamethrower',tp:'Fire',rl:'Coverage'},{nm:'Aura Sphere',tp:'Fighting',rl:'Never miss'}],
+       bt:'Mega Mewtwo Y มี Sp.Atk สูงสุดในเกม ใช้ Psystrike โจมตีผ่าน Sp.Def ของ opponent B-Tier Ranked ปัจจุบัน',
+       fm:'จบศัตรูได้ใน 1-2 hit เหมาะ farm ทุก zone โดยเฉพาะ Fighting/Poison zone'},
+  160:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Sheer Force',ds:'Boosts moves with secondary effects by 30%, removes those effects.'},
+       mv:[{nm:'Waterfall',tp:'Water',rl:'STAB reliable'},{nm:'Crunch',tp:'Dark',rl:'Coverage'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'}],
+       bt:'Feraligatr Top-tier Story (Game8) Sheer Force บูสต์ moves ที่มี secondary effect Mega Feraligatr มี Dragon Dance setup ได้',
+       fm:'ทั้ง Atk/Def ดี เหมาะ farm ทุกประเภท โดยเฉพาะ zone ที่ต้องสู้ boss Pokemon'},
+  196:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Magic Bounce',ds:'Reflects status moves back to the user.'},
+       mv:[{nm:'Psyshock',tp:'Psychic',rl:'STAB hits Def'},{nm:'Shadow Ball',tp:'Ghost',rl:'Coverage'},{nm:'Dazzling Gleam',tp:'Fairy',rl:'Coverage'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+       bt:'Espeon เร็วและ Sp.Atk ดี Magic Bounce reflect entry hazards และ status moves Calm Mind 1 ครั้งแล้วกวาด',
+       fm:'ใช้ Psyshock จบ Poison/Fighting zone ได้ไว Magic Bounce ป้องกัน status จาก wild Pokemon'},
+  197:{natures:[{nm:'Careful',up:'Sp.Def',dn:'Sp.Atk'},{nm:'Sassy',up:'Sp.Def',dn:'Speed'}],
+       ab:{nm:'Synchronize',ds:'Passes status conditions back to attacker.'},
+       mv:[{nm:'Foul Play',tp:'Dark',rl:'STAB uses enemy Atk'},{nm:'Moonlight',tp:'Fairy',rl:'Recovery'},{nm:'Toxic',tp:'Poison',rl:'Stall/Status'},{nm:'Crunch',tp:'Dark',rl:'STAB reliable'}],
+       bt:'Umbreon Defensive Wall Sp.Def สูงมาก ใช้ Foul Play + Toxic + Moonlight เล่น stall ได้ดี',
+       fm:'ทนมาก เหมาะ farm zone ยากๆ ที่มี Special attacker เยอะ ไม่ต้องกลับ heal บ่อย'},
+  248:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Brave',up:'Atk',dn:'Speed'}],
+       ab:{nm:'Sand Stream',ds:'Summons Sandstorm for 5 turns on entry. Boosts Rock-type Sp.Def by 50%.'},
+       mv:[{nm:'Crunch',tp:'Dark',rl:'STAB'},{nm:'Rock Blast',tp:'Rock',rl:'STAB multi-hit'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'}],
+       bt:'Tyranitar Pseudo-Legendary Sand Stream ตั้ง Sandstorm + บูสต์ Sp.Def ของ Rock-type Crunch + Rock Blast เป็น dual-STAB Mega Tyranitar B-Tier Ranked',
+       fm:'ทน Sandstorm เอง ใช้ Crunch+Earthquake กวาดศัตรูได้กว้าง เหมาะ farm หลาย type'},
+  257:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Speed Boost',ds:'Raises Speed by 1 stage at end of each turn.'},
+       mv:[{nm:'Flare Blitz',tp:'Fire',rl:'STAB physical'},{nm:'High Jump Kick',tp:'Fighting',rl:'STAB powerful'},{nm:'Thunder Punch',tp:'Electric',rl:'Coverage'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'}],
+       bt:'Blaziken มี Speed Boost ทำให้ยิ่งเร็วขึ้นทุก turn High Jump Kick + Flare Blitz Swords Dance setup แล้วแทบสู้ไม่ได้',
+       fm:'Speed Boost ทำให้ลงมือก่อนทุกคน เหมาะ farm zone ที่มี Ice/Normal/Rock'},
+  260:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Relaxed',up:'Def',dn:'Speed'}],
+       ab:{nm:'Torrent',ds:'Boosts Water moves by 50% when HP is below 1/3.'},
+       mv:[{nm:'Waterfall',tp:'Water',rl:'STAB'},{nm:'Earthquake',tp:'Ground',rl:'STAB dual'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'},{nm:'Rock Slide',tp:'Rock',rl:'Coverage'}],
+       bt:'Swampert Water/Ground ไม่มีจุดอ่อน Electric Waterfall + Earthquake dual-STAB Mega Swampert มี Swift Swim + Rain ทำให้เร็วมากในฝน',
+       fm:'ไม่มีจุดอ่อน Electric จัดการ zone ที่มี Fire/Poison/Rock ได้ดี'},
+  282:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Synchronize',ds:'Passes status conditions back to attacker.'},
+       mv:[{nm:'Moonblast',tp:'Fairy',rl:'STAB'},{nm:'Psyshock',tp:'Psychic',rl:'STAB hits Def'},{nm:'Thunderbolt',tp:'Electric',rl:'Coverage'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+       bt:'Gardevoir Top-tier Story (Game8) Mega Gardevoir S-Tier Ranked มี Pixilate ใช้ Teleport reposition ในระบบ real-time ได้ดี',
+       fm:'Moonblast จบ Dark/Dragon zone ไว Calm Mind สะสม ตัวเดียวสู้ได้ทั้ง zone'},
+  373:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Intimidate',ds:'Lowers opponent Attack by 1 stage on entry.'},
+       mv:[{nm:'Outrage',tp:'Dragon',rl:'STAB nuke'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Fire Fang',tp:'Fire',rl:'Coverage'},{nm:'Dragon Dance',tp:'Dragon',rl:'Setup'}],
+       bt:'Mega Salamence (A-Tier) มี Aerilate เปลี่ยน Normal เป็น Flying + power boost Dragon Dance 1 ครั้งแล้วรัว Outrage กวาดได้เร็ว',
+       fm:'บินเร็ว Outrage กวาดศัตรู Dragon-weak ได้ไว'},
+  376:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Clear Body',ds:'Prevents stat reduction from opponents moves.'},
+       mv:[{nm:'Meteor Mash',tp:'Steel',rl:'STAB'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'},{nm:'Zen Headbutt',tp:'Psychic',rl:'Coverage'}],
+       bt:'Mega Metagross S-Tier Ranked มี Tough Claws บูสต์ contact moves Meteor Mash มีโอกาส +1 Atk สามารถจัดการ Gardevoir ที่ populate Ranked ได้ดี',
+       fm:'Steel/Psychic สู้ได้หลาย type จัดการ zone ยากๆ ได้ดี'},
+  445:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Rough Skin',ds:'Deals 1/8 HP damage to attacker on contact.'},
+       mv:[{nm:'Earthquake',tp:'Ground',rl:'STAB area'},{nm:'Dragon Claw',tp:'Dragon',rl:'STAB reliable'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'},{nm:'Iron Head',tp:'Steel',rl:'Anti-Fairy/Ice'}],
+       bt:'Garchomp Top-tier ทุก Season ของ Ranked Swords Dance แล้วกด Earthquake กวาดทั้ง arena Mega Garchomp ทำ Earthquake area กว้างมาก ใช้ Focus Sash/Adamant 252 Atk/Speed',
+       fm:'เร็วที่สุด Earthquake กวาด Ground-weak zone ได้ทั้งหมดใน 1 hit เหมาะ farm EXP เร็วที่สุด'},
+  448:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Steadfast',ds:'Raises Speed by 1 stage when flinched.'},
+       mv:[{nm:'Close Combat',tp:'Fighting',rl:'STAB powerful'},{nm:'Bullet Punch',tp:'Steel',rl:'Priority STAB'},{nm:'Crunch',tp:'Dark',rl:'Coverage'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'}],
+       bt:'Lucario Top-tier Story (Game8) Mega Lucario A-Tier มี Adaptability ทำให้ STAB x2 Bullet Punch priority + Close Combat กวาดได้ไว',
+       fm:'Bullet Punch priority จบศัตรูเร็วกว่า turn จัดการ group ได้ดี'},
+  530:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Sand Rush',ds:'Doubles Speed in sandstorm.'},
+       mv:[{nm:'Earthquake',tp:'Ground',rl:'STAB area'},{nm:'Iron Head',tp:'Steel',rl:'STAB reliable'},{nm:'Rock Slide',tp:'Rock',rl:'Coverage flinch'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'}],
+       bt:'Excadrill Top-tier Story (Game8) Sand Rush ใน Sandstorm Speed x2 ใช้ร่วม Tyranitar/Hippowdon Mega Excadrill S-Tier มี Mold Breaker',
+       fm:'ขุดดิน Dig ใน zone ได้เร็ว Earthquake กวาด group ได้ดี เหมาะ farm EXP'},
+  609:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Timid',up:'Speed',dn:'Atk'}],
+       ab:{nm:'Flash Fire',ds:'Immune to Fire moves. Activates to boost Fire moves by 50%.'},
+       mv:[{nm:'Shadow Ball',tp:'Ghost',rl:'STAB'},{nm:'Flamethrower',tp:'Fire',rl:'STAB coverage'},{nm:'Energy Ball',tp:'Grass',rl:'Coverage'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+       bt:'Mega Chandelure A-Tier มี Flash Fire + Ghost/Fire typing ที่ดีมาก Calm Mind setup แล้วกด Shadow Ball/Flamethrower ครอบคลุมกว้าง',
+       fm:'Flamethrower กวาด Bug/Grass/Steel ไว Ghost immunity ต่อ Normal/Fighting'},
+  612:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Mold Breaker',ds:'Ignores the effect of opponents ability.'},
+       mv:[{nm:'Outrage',tp:'Dragon',rl:'STAB nuke'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Poison Jab',tp:'Poison',rl:'Anti-Fairy'},{nm:'Dragon Dance',tp:'Dragon',rl:'Setup'}],
+       bt:'Haxorus Atk สูงมาก Dragon Dance ครั้งเดียวทำให้ Outrage one-shot ได้เกือบทุกอย่าง Mold Breaker ทะลุ Levitate/Sturdy',
+       fm:'Dragon Dance 1 ครั้งแล้วกวาด zone ได้เร็วมาก Outrage ทำลาย multi-target'},
+  658:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Torrent',ds:'Boosts Water moves by 50% when HP is below 1/3.'},
+       mv:[{nm:'Water Shuriken',tp:'Water',rl:'Priority multi-hit'},{nm:'Night Slash',tp:'Dark',rl:'STAB coverage'},{nm:'Extrasensory',tp:'Psychic',rl:'Coverage'},{nm:'U-Turn',tp:'Bug',rl:'Pivot/Escape'}],
+       bt:'Greninja (Water/Dark) ใช้ Water Shuriken priority multi-hit Mega Greninja B-Tier มี Battle Bond/Protean เปลี่ยน type ตาม move',
+       fm:'เร็วที่สุด Water-type Water Shuriken จบ Fire/Rock zone ได้ไวมาก'},
+  681:{natures:[{nm:'Quiet',up:'Sp.Atk',dn:'Speed'},{nm:'Brave',up:'Atk',dn:'Speed'}],
+       ab:{nm:'Stance Change',ds:'Switches between Shield Forme and Blade Forme based on moves used.'},
+       mv:[{nm:'Sacred Sword',tp:'Fighting',rl:'STAB ignores buffs'},{nm:'Shadow Sneak',tp:'Ghost',rl:'STAB priority'},{nm:"King's Shield",tp:'Steel',rl:'Defense + Stance'},{nm:'Shadow Ball',tp:'Ghost',rl:'Special STAB'}],
+       bt:"Aegislash Stance Change เปลี่ยน Shield/Blade อัตโนมัติ King's Shield ตอบ contact attack ด้วย -2 Atk Sacred Sword bypass Def buffs ของ opponent",
+       fm:'ใช้ Shield form ทน hit แล้วโจมตีสลับ เหมาะ farm zone ที่มี Ghost/Dragon/Fairy'},
+  700:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Calm',up:'Sp.Def',dn:'Atk'}],
+       ab:{nm:'Pixilate',ds:'Turns Normal-type moves into Fairy and boosts power by 20%.'},
+       mv:[{nm:'Hyper Voice',tp:'Normal',rl:'→Fairy via Pixilate'},{nm:'Moonblast',tp:'Fairy',rl:'STAB'},{nm:'Shadow Ball',tp:'Ghost',rl:'Coverage'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+       bt:'Sylveon Pixilate ทำให้ Hyper Voice กลายเป็น Fairy ทะลุ Substitute Sp.Def สูง + Calm Mind ทำให้ทนและโจมตีได้',
+       fm:'Moonblast จบ Dark/Dragon/Fighting ง่าย Hyper Voice กวาด multi-target'},
+  716:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Fairy Aura',ds:'Powers up Fairy-type moves for all Pokemon on the field by 33%.'},
+       mv:[{nm:'Moonblast',tp:'Fairy',rl:'STAB + Fairy Aura'},{nm:'Geomancy',tp:'Fairy',rl:'+2 SpA/SpD/Speed'},{nm:'Thunderbolt',tp:'Electric',rl:'Coverage'},{nm:'Focus Blast',tp:'Fighting',rl:'Coverage'}],
+       bt:'Xerneas S-Tier Legendary ใน Ranked Fairy Aura บูสต์ Moonblast ให้แรงมาก Geomancy +2 ทุก stat พิเศษ แทบสู้ไม่ได้ถ้า setup ได้',
+       fm:'Moonblast กวาด Dark/Dragon zone ได้อย่างสบาย Geomancy ครั้งเดียวจบ zone ยากๆ'},
+  717:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Dark Aura',ds:'Powers up Dark-type moves for all Pokemon on the field by 33%.'},
+       mv:[{nm:'Oblivion Wing',tp:'Flying',rl:'STAB + drain HP 75%'},{nm:'Dark Pulse',tp:'Dark',rl:'STAB + Dark Aura'},{nm:'Sucker Punch',tp:'Dark',rl:'Priority STAB'},{nm:'Disable',tp:'Normal',rl:'Utility'}],
+       bt:'Yveltal S-Tier Ranked Oblivion Wing ดูด HP กลับ 75% Dark Aura บูสต์ Dark moves ทั้ง field Sucker Punch priority ตอบ setup Pokemon',
+       fm:'บินข้าม zone ได้ Oblivion Wing heal ระหว่าง fight เหมาะ farm zone ยากๆ โดยไม่ต้อง heal'},
+  384:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Air Lock',ds:'Negates all weather effects on the field.'},
+       mv:[{nm:'Outrage',tp:'Dragon',rl:'STAB nuke'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Extreme Speed',tp:'Normal',rl:'Priority'},{nm:'Dragon Dance',tp:'Dragon',rl:'Setup'}],
+       bt:'Rayquaza Dragon/Flying ไม่โดน Ground Dragon Dance แล้วรัว Extreme Speed priority Mega Rayquaza ไม่ต้องถือ Mega Stone',
+       fm:'บินข้าม zone ได้ทั้งหมด Air Lock ยกเลิก weather เหมาะ farm ทุก zone'},
+};
+
+function getBuild(id){return BUILDS[id]||null}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function tcol(t){return (TC[t]||{c:'#888'}).c}
+function tbg(t){return (TC[t]||{b:'#111'}).b}
+function numStr(n){return String(n).padStart(4,'0')}
+function sprite(id){return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/'+id+'.png'}
+
+function mkBadge(type,cls){
+  cls=cls||'tb';
+  return '<span class="'+cls+'" style="background:'+tcol(type)+';color:'+tbg(type)+'">'+type+'</span>';
+}
+
+function mkChip(type,cls){
+  cls=cls||'wc';
+  return '<span class="'+cls+'" style="background:'+tcol(type)+';color:'+tbg(type)+'">'+type+'</span>';
+}
+
+// ── WEAKNESS HTML ──────────────────────────────────────────────────────────
+function weaknessHTML(t1,t2){
+  var mu=calcMu(t1,t2);
+  var cats=[
+    {m:'×4',lbl:'4× Weak',cls:'wbox w4x',filter:function(m){return m===4}},
+    {m:'×2',lbl:'2× Weak',cls:'wbox w2x',filter:function(m){return m===2}},
+    {m:'½',lbl:'Resist',cls:'wbox wh',filter:function(m){return m===0.5}},
+    {m:'¼',lbl:'Double Resist',cls:'wbox wq',filter:function(m){return m===0.25}},
+    {m:'0',lbl:'Immune',cls:'wbox wi',filter:function(m){return m===0}},
+  ];
+  var html='<div class="wrow">';
+  cats.forEach(function(cat){
+    var ts=TYPES.filter(function(t){return cat.filter(mu[t])});
+    if(!ts.length)return;
+    html+='<div class="'+cat.cls+'"><div class="wbtit"><span class="wm">'+cat.m+'</span>'+cat.lbl+'</div><div class="wchips">'+ts.map(function(t){return mkChip(t,'wc')}).join('')+'</div></div>';
+  });
+  html+='</div>';
+  if(html==='<div class="wrow"></div>')html+='<div class="wrow"><span style="color:var(--mu);font-size:13px;padding:8px 0;display:block">ไม่มีจุดอ่อนพิเศษ</span></div>';
+  return html;
+}
+
+// ── BUILD HTML ─────────────────────────────────────────────────────────────
+function buildHTML(id){
+  var b=getBuild(id);
+  if(!b)return '<div class="nobuild"><span>📋</span>ยังไม่มีข้อมูล Build สำหรับ Pokemon ตัวนี้<br><small>รองรับ Pokemon หลักกว่า 30 ตัว</small></div>';
+  var natsH=b.natures.map(function(n){
+    return '<div class="natrow"><span class="natnm">'+n.nm+'</span><span class="nst nup">↑ '+n.up+'</span><span class="nst ndn">↓ '+n.dn+'</span></div>';
+  }).join('');
+  var mvsH=b.mv.map(function(m){
+    return '<div class="mvi"><span class="mvdot" style="background:'+tcol(m.tp)+'"></span><span class="mvnm">'+m.nm+'</span><span class="mvtp" style="background:'+tcol(m.tp)+';color:'+tbg(m.tp)+'">'+m.tp+'</span><span class="mvrl">'+m.rl+'</span></div>';
+  }).join('');
+  return [
+    '<div class="bsec"><div class="blbl">Best Natures</div>'+natsH+'</div>',
+    '<div class="bsec"><div class="blbl">Ability</div><div class="abbox"><div class="abnm">'+b.ab.nm+'</div><div class="abdsc">'+b.ab.ds+'</div></div></div>',
+    '<div class="bsec"><div class="blbl">Recommended Moveset</div><div class="mvlist">'+mvsH+'</div></div>',
+    '<div class="tipgrid">',
+    '<div class="tipbox bt"><strong>⚔️ Battle Tips</strong>'+b.bt+'</div>',
+    '<div class="tipbox fm"><strong>🌾 Farm Tips</strong>'+b.fm+'</div>',
+    '</div>'
+  ].join('');
+}
+
+// ── POKEDEX ────────────────────────────────────────────────────────────────
+var curFilter='', selPoke=null, searchT=null;
+
+// Build filter row
+var fr=document.getElementById('frow');
+fr.innerHTML='<div class="fp fall on" onclick="setFilter(\'\',this)">All</div>';
+TYPES.forEach(function(t){
+  fr.innerHTML+='<div class="fp" style="background:'+tcol(t)+';color:'+tbg(t)+'" onclick="setFilter(\''+t+'\',this)">'+t+'</div>';
+});
+
+function setFilter(type,el){
+  curFilter=type;
+  document.querySelectorAll('.fp').forEach(function(p){p.classList.remove('on')});
+  el.classList.add('on');
+  renderDex();
+}
+
+function doSearch(){
+  clearTimeout(searchT);
+  searchT=setTimeout(renderDex,80);
+}
+
+function renderDex(){
+  var q=(document.getElementById('dex-q').value||'').toLowerCase().trim();
+  var filtered=DEX.filter(function(p){
+    var matchQ=!q||p[1].toLowerCase().indexOf(q)>=0||String(p[0]).indexOf(q)>=0;
+    var matchT=!curFilter||(p[2]===curFilter||p[3]===curFilter);
+    return matchQ&&matchT;
+  });
+  document.getElementById('scnt').textContent=filtered.length?filtered.length+' found':'';
+  var grid=document.getElementById('pgrid');
+  var nores=document.getElementById('nores');
+  if(!filtered.length){grid.innerHTML='';nores.style.display='block';return}
+  nores.style.display='none';
+  var show=filtered.slice(0,120);
+  grid.innerHTML=show.map(function(p){
+    var id=p[0],name=p[1],t1=p[2],t2=p[3];
+    var sel=selPoke===id?'sel':'';
+    return '<div class="pc '+sel+'" onclick="selCard('+id+')">'
+      +'<div class="pnum">#'+numStr(id)+'</div>'
+      +'<img class="psp" src="'+sprite(id)+'" alt="'+name+'" onerror="this.style.display=\'none\'" loading="lazy">'
+      +'<div class="pnm">'+name+'</div>'
+      +'<div class="ptyp">'+mkBadge(t1)+(t2?mkBadge(t2):'')+'</div>'
+      +'</div>';
+  }).join('');
+  if(filtered.length>120){
+    grid.innerHTML+='<div style="grid-column:1/-1;text-align:center;padding:14px;color:var(--mu);font-size:13px">...และอีก '+(filtered.length-120)+' ตัว กรอกชื่อเพื่อค้นหาเพิ่ม</div>';
+  }
+}
+
+function selCard(id){
+  var poke=DEX.find(function(p){return p[0]===id});
+  if(!poke)return;
+  var det=document.getElementById('det');
+  if(selPoke===id){selPoke=null;det.classList.remove('on');renderDex();return}
+  selPoke=id;
+  var pid=poke[0],name=poke[1],t1=poke[2],t2=poke[3];
+  var hasBuild=!!getBuild(pid);
+
+  det.innerHTML=
+    '<div class="dhead">'
+      +'<img class="dsp" src="'+sprite(pid)+'" alt="'+name+'" onerror="this.style.display=\'none\'">'
+      +'<div class="dinfo">'
+        +'<div class="dnum">#'+numStr(pid)+'</div>'
+        +'<div class="dnm">'+name+'</div>'
+        +'<div class="dtyp">'+mkBadge(t1,'dtb')+(t2?mkBadge(t2,'dtb'):'')+'</div>'
+        +'<button class="chkbtn" onclick="sendChk(\''+t1+'\',\''+(t2||'')+'\')">⚔️ Type Checker</button>'
+      +'</div>'
+    +'</div>'
+    +'<div class="btabs">'
+      +'<div class="btt on" onclick="swBTab(\'w\',this)">🛡️ Weakness</div>'
+      +'<div class="btt" onclick="swBTab(\'b\',this)">'+(hasBuild?'⚔️ Best Build':'📋 Build (N/A)')+'</div>'
+    +'</div>'
+    +'<div class="bpanel on" id="bpW">'+weaknessHTML(t1,t2)+'</div>'
+    +'<div class="bpanel" id="bpB">'+buildHTML(pid)+'</div>';
+
+  det.classList.add('on');
+  det.scrollIntoView({behavior:'smooth',block:'nearest'});
+  renderDex();
+}
+
+function swBTab(tab,el){
+  var det=document.getElementById('det');
+  det.querySelectorAll('.btt').forEach(function(t){t.classList.remove('on')});
+  det.querySelectorAll('.bpanel').forEach(function(p){p.classList.remove('on')});
+  el.classList.add('on');
+  var panel=det.querySelector(tab==='w'?'#bpW':'#bpB');
+  if(panel)panel.classList.add('on');
+}
+
+function sendChk(t1,t2){
+  s1=t1||null; s2=t2||null;
+  renderSlots(); renderChkOut(); updSel();
+  goTab('chk',document.querySelectorAll('.ntab')[1]);
+}
+
+// ── TYPE CHECKER ───────────────────────────────────────────────────────────
+var s1=null,s2=null,dragging=null,pending=null;
+
+var pr=document.getElementById('palrow');
+TYPES.forEach(function(type){
+  var el=document.createElement('div');
+  el.className='tpill'; el.id='tp-'+type;
+  el.textContent=type;
+  el.style.background=tcol(type); el.style.color=tbg(type);
+  el.draggable=true;
+  el.addEventListener('dragstart',function(e){dragging=type;setTimeout(function(){el.classList.add('drag')},0);e.dataTransfer.setData('text/plain',type)});
+  el.addEventListener('dragend',function(){el.classList.remove('drag');dragging=null});
+  el.addEventListener('click',function(){pillClk(type)});
+  pr.appendChild(el);
+});
+
+function pillClk(type){
+  if(pending){setType(pending,type);pending=null;clrHL();return}
+  if(!s1)setType(1,type);
+  else if(!s2&&s1!==type)setType(2,type);
+}
+
+function dzoneclk(n){
+  var cur=n===1?s1:s2;
+  if(cur)return;
+  pending=n; clrHL();
+  document.getElementById('dz'+n).classList.add('pend');
+}
+
+function clrHL(){
+  document.getElementById('dz1').classList.remove('pend');
+  document.getElementById('dz2').classList.remove('pend');
+  pending=null;
+}
+
+function dov(e){e.preventDefault();e.currentTarget.classList.add('ov')}
+function dlv(e){e.currentTarget.classList.remove('ov')}
+function ddp(e,n){e.preventDefault();e.currentTarget.classList.remove('ov');var t=e.dataTransfer.getData('text/plain')||dragging;if(t)setType(n,t)}
+
+function setType(n,type){
+  if(n===1&&s2===type)s2=null;
+  if(n===2&&s1===type)return;
+  if(n===1)s1=type; else s2=type;
+  clrHL(); renderSlots(); renderChkOut(); updSel();
+}
+
+function remType(n){if(n===1)s1=null;else s2=null;renderSlots();renderChkOut();updSel()}
+function clrChk(){s1=null;s2=null;clrHL();renderSlots();renderChkOut();updSel()}
+
+function updSel(){
+  TYPES.forEach(function(t){
+    var el=document.getElementById('tp-'+t);
+    if(el)(t===s1||t===s2)?el.classList.add('sel'):el.classList.remove('sel');
+  });
+}
+
+function mkSBadge(type,n){
+  return '<div class="sbadge" style="background:'+tcol(type)+';color:'+tbg(type)+'" onclick="event.stopPropagation();remType('+n+')">'+type+'<span class="rmbtn">✕</span></div>';
+}
+
+function renderSlots(){
+  document.getElementById('dz1s').innerHTML=s1?mkSBadge(s1,1):'<div class="dzemp"><em>⬡</em>ลาก type มาวางที่นี่<br>หรือกดเพื่อเลือก</div>';
+  document.getElementById('dz2s').innerHTML=s2?mkSBadge(s2,2):'<div class="dzemp"><em>⬡</em>Dual-Type Pokemon<br>ใส่ type ที่ 2 ที่นี่</div>';
+}
+
+function renderChkOut(){
+  var el=document.getElementById('rout');
+  if(!s1){el.innerHTML='<div class="rph"><span>⬡</span>เลือก Type 1 เพื่อดูผล</div>';return}
+  var mu=calcMu(s1,s2);
+  var cats=[
+    {m:'×4',lbl:'4× Weak',cls:'rcat rc4x',f:function(m){return m===4}},
+    {m:'×2',lbl:'2× Weak',cls:'rcat rc2x',f:function(m){return m===2}},
+    {m:'½×',lbl:'½ Resist',cls:'rcat rch',f:function(m){return m===0.5}},
+    {m:'¼×',lbl:'¼ Resist',cls:'rcat rcq',f:function(m){return m===0.25}},
+    {m:'0×',lbl:'Immune',cls:'rcat rc0',f:function(m){return m===0}},
+    {m:'1×',lbl:'Neutral',cls:'rcat rc1x',f:function(m){return m===1}},
+  ];
+  var combo='<div class="comb">'+mkSBadge(s1,1).replace(' onclick="event.stopPropagation();remType(1)"','');
+  if(s2)combo+='<span class="cpl">+</span>'+mkSBadge(s2,2).replace(' onclick="event.stopPropagation();remType(2)"','');
+  combo+='</div>';
+  var grid='<div class="rgrid">';
+  cats.forEach(function(cat){
+    var ts=TYPES.filter(function(t){return cat.f(mu[t])});
+    if(!ts.length&&cat.m==='1×')return;
+    grid+='<div class="'+cat.cls+'"><div class="rcttit"><span class="rm">'+cat.m+'</span>'+cat.lbl+'</div><div class="rchips">';
+    if(!ts.length)grid+='<span class="ecat">—</span>';
+    else ts.forEach(function(t){grid+=mkChip(t,'rc')});
+    grid+='</div></div>';
+  });
+  grid+='</div>';
+  el.innerHTML=combo+grid;
+}
+
+// ── TAB SWITCH ─────────────────────────────────────────────────────────────
+function goTab(tab,el){
+  document.querySelectorAll('.ntab').forEach(function(t){t.classList.remove('on')});
+  document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on')});
+  if(el)el.classList.add('on');
+  document.getElementById('pg-'+tab).classList.add('on');
+  window.scrollTo(0,0);
+}
+
+// ── INIT ────────────────────────────────────────────────────────────────────
+renderDex();
+renderSlots();
+renderChkOut();
+</script>
+</body>
+</html>
