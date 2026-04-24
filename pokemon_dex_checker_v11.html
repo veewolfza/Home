@@ -1,0 +1,3656 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>Pokédex & Type Checker — Legends Z-A</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Saira+Condensed:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0c12;--surf:#111520;--surf2:#181d2e;
+  --bd:rgba(255,255,255,0.07);--bd2:rgba(255,255,255,0.14);
+  --tx:#e8eaf2;--mu:#6b7194;--ac:#5b8eff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(91,142,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(91,142,255,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:100;background:rgba(10,12,18,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd2);display:flex;justify-content:center}
+.ntab{flex:1;max-width:200px;padding:14px 8px;text-align:center;font-family:'Saira Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;user-select:none}
+.ntab.on{color:var(--ac);border-bottom-color:var(--ac)}
+
+/* PAGES */
+.pg{display:none;position:relative;z-index:1;padding:20px 16px 80px;max-width:900px;margin:0 auto}
+.pg.on{display:block}
+
+/* HEADER */
+.ph{text-align:center;margin-bottom:24px;padding-top:8px}
+.ptag{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ac);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px}
+.ptitle{font-family:'Saira Condensed',sans-serif;font-size:clamp(28px,8vw,48px);font-weight:900;letter-spacing:-1px;line-height:1;color:#fff;text-transform:uppercase}
+.ptitle span{color:var(--ac)}
+.psub{font-size:13px;color:var(--mu);margin-top:6px}
+
+/* SEARCH */
+.sw{position:relative;margin-bottom:14px}
+.si{width:100%;background:var(--surf);border:1.5px solid var(--bd2);border-radius:12px;padding:12px 70px 12px 44px;color:var(--tx);font-family:'Rajdhani',sans-serif;font-size:16px;outline:none;transition:border-color .2s}
+.si:focus{border-color:var(--ac)}
+.si::placeholder{color:var(--mu)}
+.sico{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mu);font-size:18px;pointer-events:none}
+.scnt{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--mu)}
+
+/* TYPE FILTER */
+.frow{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+.fp{padding:4px 10px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:600;letter-spacing:.4px;cursor:pointer;border:1.5px solid transparent;transition:all .15s;text-transform:uppercase;user-select:none;-webkit-tap-highlight-color:transparent}
+.fp:hover{transform:scale(1.05)}
+.fp.on{border-color:rgba(255,255,255,.55)!important}
+.fall{background:var(--surf2);border-color:var(--bd2)!important;color:var(--tx)}
+.fall.on{color:var(--ac);border-color:var(--ac)!important}
+
+/* POKEMON GRID */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px}
+@media(max-width:480px){.pgrid{grid-template-columns:repeat(2,1fr);gap:7px}}
+
+.pc{background:var(--surf);border:1px solid var(--bd);border-radius:14px;padding:11px 9px;cursor:pointer;transition:all .18s;text-align:center;-webkit-tap-highlight-color:transparent}
+.pc:hover{border-color:var(--bd2);transform:translateY(-2px)}
+.pc.sel{border-color:var(--ac);background:rgba(91,142,255,.08)}
+.pnum{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);margin-bottom:3px}
+.psp{width:68px;height:68px;object-fit:contain;image-rendering:pixelated;margin:0 auto 3px;display:block}
+.pnm{font-family:'Saira Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:capitalize;margin-bottom:5px}
+.ptyp{display:flex;gap:3px;justify-content:center;flex-wrap:wrap}
+.tb{padding:2px 7px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+
+/* DETAIL PANEL */
+.det{background:var(--surf);border:1.5px solid var(--bd2);border-radius:16px;padding:16px;margin-bottom:14px;display:none}
+.det.on{display:block;animation:fu .22s ease}
+.det-close{position:absolute;top:12px;right:12px;background:var(--surf2);border:1px solid var(--bd2);color:var(--mu);font-family:"IBM Plex Mono",monospace;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;transition:all .15s;letter-spacing:.5px}
+.det-close:hover{border-color:var(--tx);color:var(--tx)}
+.det{position:relative}
+@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.dhead{display:flex;gap:14px;align-items:flex-start;margin-bottom:0}
+@media(max-width:440px){.dhead{flex-direction:column;align-items:center;text-align:center}}
+.dsp{width:96px;height:96px;object-fit:contain;image-rendering:pixelated;flex-shrink:0}
+.dinfo{flex:1;min-width:0}
+.dnum{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--mu);margin-bottom:2px}
+.dnm{font-family:'Saira Condensed',sans-serif;font-size:26px;font-weight:900;text-transform:capitalize;line-height:1.1}
+.dtyp{display:flex;gap:5px;margin:6px 0 10px;flex-wrap:wrap}
+@media(max-width:440px){.dtyp{justify-content:center}}
+.dtb{padding:4px 13px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+.chkbtn{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .15s;text-transform:uppercase;-webkit-tap-highlight-color:transparent}
+.chkbtn:hover{background:#4070ee}
+
+/* BUILD TABS */
+.btabs{display:flex;border-bottom:1px solid var(--bd2);margin-top:14px}
+.btt{padding:7px 14px;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.btt.on{color:var(--ac);border-bottom-color:var(--ac)}
+.bpanel{display:none;padding-top:12px}
+.bpanel.on{display:block;animation:fu .2s ease}
+
+/* WEAKNESS BOX */
+.wrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}
+@media(max-width:400px){.wrow{grid-template-columns:1fr 1fr}}
+.wbox{border-radius:11px;padding:9px 11px;border:1px solid var(--bd)}
+.wbtit{font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.wbtit .wm{font-family:'IBM Plex Mono',monospace;font-size:14px}
+.wchips{display:flex;flex-wrap:wrap;gap:3px}
+.wc{padding:2px 7px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase}
+.w4x{background:rgba(226,75,74,.1);border-color:rgba(226,75,74,.32)}.w4x .wbtit{color:#ff6b6a}
+.w2x{background:rgba(239,159,39,.08);border-color:rgba(239,159,39,.28)}.w2x .wbtit{color:#f5a832}
+.wh{background:rgba(93,202,165,.08);border-color:rgba(93,202,165,.28)}.wh .wbtit{color:#5dcaa5}
+.wq{background:rgba(97,196,89,.1);border-color:rgba(97,196,89,.35)}.wq .wbtit{color:#97c459}
+.wi{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.14)}.wi .wbtit{color:#888}
+
+/* BUILD CONTENT */
+.bsec{margin-bottom:13px}
+.blbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:7px}
+
+.natrow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px}
+.natnm{font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:700;color:#fff}
+.nst{font-size:11px;padding:2px 7px;border-radius:6px;font-family:'IBM Plex Mono',monospace}
+.nup{background:rgba(95,220,130,.14);color:#5fdc82;border:1px solid rgba(95,220,130,.28)}
+.ndn{background:rgba(255,107,107,.11);color:#ff8a8a;border:1px solid rgba(255,107,107,.22)}
+
+.abbox{background:rgba(91,142,255,.07);border:1px solid rgba(91,142,255,.2);border-radius:10px;padding:10px 12px}
+.abnm{font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--ac);margin-bottom:3px}
+.abdsc{font-size:12px;color:var(--mu);line-height:1.5}
+
+.mvlist{display:flex;flex-direction:column;gap:5px}
+.mvi{display:flex;align-items:center;gap:7px;background:var(--surf2);border-radius:8px;padding:7px 10px}
+.mvdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mvnm{font-family:'Saira Condensed',sans-serif;font-size:15px;font-weight:700;flex:1;min-width:0}
+.mvtp{padding:2px 7px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;white-space:nowrap}
+.mvrl{font-size:10px;color:var(--mu);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+@media(max-width:360px){.mvrl{display:none}}
+
+.tipgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:500px){.tipgrid{grid-template-columns:1fr}}
+.tipbox{border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.6;border:1px solid}
+.tipbox.bt{background:rgba(226,75,74,.07);border-color:rgba(226,75,74,.2);color:#ffb3b3}
+.tipbox.fm{background:rgba(95,196,89,.07);border-color:rgba(95,196,89,.2);color:#a8e89a}
+.tipbox strong{display:block;font-family:'Saira Condensed',sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.tipbox.bt strong{color:#ff7070}
+.tipbox.fm strong{color:#7fdc72}
+
+.nobuild{text-align:center;padding:24px 0;color:var(--mu);font-size:13px}
+.nobuild span{font-size:28px;margin-bottom:8px;opacity:.3;display:block}
+
+/* NO RESULTS */
+.nores{text-align:center;padding:48px 0;color:var(--mu);display:none}
+.nores span{font-size:40px;margin-bottom:10px;opacity:.3;display:block}
+
+/* TYPE CHECKER PAGE */
+.tipbar{background:rgba(91,142,255,.08);border:1px solid rgba(91,142,255,.2);border-radius:10px;padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ac);margin-bottom:14px;letter-spacing:.5px;line-height:1.5}
+
+.dlayout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+@media(max-width:460px){.dlayout{grid-template-columns:1fr}}
+
+.dzone{background:var(--surf);border:1.5px dashed var(--bd2);border-radius:16px;padding:13px;min-height:108px;transition:all .2s;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.dzone.ov,.dzone.pend{border-color:var(--ac);background:rgba(91,142,255,.07)}
+.dzlbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:9px}
+.dzslot{min-height:58px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:7px}
+.dzemp{font-size:13px;color:var(--mu);text-align:center;line-height:1.6;pointer-events:none}
+.dzemp em{display:block;font-size:22px;margin-bottom:3px;opacity:.35;font-style:normal}
+
+.sbadge{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:17px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:transform .15s;text-transform:uppercase}
+.sbadge:hover{transform:scale(1.05)}
+.rmbtn{font-size:14px;opacity:.7;line-height:1}
+.rmbtn:hover{opacity:1}
+
+.pal{background:var(--surf);border:1px solid var(--bd);border-radius:16px;padding:13px;margin-bottom:14px}
+.pallbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:9px}
+.palrow{display:flex;flex-wrap:wrap;gap:5px}
+.tpill{padding:5px 12px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.4px;cursor:pointer;user-select:none;transition:transform .12s,box-shadow .12s;text-transform:uppercase;border:2px solid transparent;-webkit-tap-highlight-color:transparent}
+.tpill:hover{transform:translateY(-2px) scale(1.06);box-shadow:0 5px 18px rgba(0,0,0,.5)}
+.tpill:active{transform:scale(.96)}
+.tpill.drag{opacity:.3}
+.tpill.sel{border-color:rgba(255,255,255,.6);box-shadow:0 0 0 2px rgba(255,255,255,.18)}
+
+.rsec{background:var(--surf);border:1px solid var(--bd);border-radius:16px;padding:15px}
+.rhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:7px}
+.rtit{font-family:'Saira Condensed',sans-serif;font-size:19px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.clrbtn{background:transparent;border:1px solid var(--bd2);color:var(--mu);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 11px;border-radius:6px;cursor:pointer;transition:all .15s;letter-spacing:1px}
+.clrbtn:hover{border-color:var(--tx);color:var(--tx)}
+.rph{text-align:center;padding:34px 0;color:var(--mu);font-size:14px}
+.rph span{font-size:32px;margin-bottom:9px;opacity:.25;display:block}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:9px}
+@media(max-width:390px){.rgrid{grid-template-columns:1fr 1fr}}
+.rcat{border-radius:11px;padding:9px 11px;border:1px solid var(--bd);animation:fu .2s ease}
+.rcat:nth-child(2){animation-delay:.04s}.rcat:nth-child(3){animation-delay:.08s}.rcat:nth-child(4){animation-delay:.12s}
+.rcttit{font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.rcttit .rm{font-family:'IBM Plex Mono',monospace;font-size:14px}
+.rchips{display:flex;flex-wrap:wrap;gap:3px}
+.rc{padding:3px 8px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase}
+.ecat{color:var(--mu);font-size:11px;font-style:italic}
+.comb{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:13px;flex-wrap:wrap}
+.cpl{font-size:20px;color:var(--mu)}
+
+.rc4x{background:rgba(226,75,74,.1);border-color:rgba(226,75,74,.32)}.rc4x .rcttit{color:#ff6b6a}
+.rc2x{background:rgba(239,159,39,.08);border-color:rgba(239,159,39,.28)}.rc2x .rcttit{color:#f5a832}
+.rch{background:rgba(93,202,165,.08);border-color:rgba(93,202,165,.28)}.rch .rcttit{color:#5dcaa5}
+.rcq{background:rgba(97,196,89,.1);border-color:rgba(97,196,89,.35)}.rcq .rcttit{color:#97c459}
+.rc0{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.14)}.rc0 .rcttit{color:#888}
+.rc1x .rcttit{color:var(--mu)}
+
+/* EV CHECKER */
+.ev-sort-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:10px;background:var(--surf);border:1px solid var(--bd);border-radius:12px;padding:10px 12px}
+.ev-sort-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-right:4px;white-space:nowrap}
+.ev-sb{background:var(--surf2);border:1.5px solid var(--bd2);color:var(--mu);font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;padding:5px 11px;border-radius:8px;cursor:pointer;transition:all .15s;text-transform:uppercase}
+.ev-sb:hover{border-color:var(--tx);color:var(--tx)}
+.ev-sb.on{background:rgba(91,142,255,.15);border-color:var(--ac);color:var(--ac)}
+.ev-sb-dir{margin-left:auto;background:transparent;border:1.5px solid var(--bd2);color:var(--mu);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 11px;border-radius:8px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.ev-sb-dir:hover{border-color:var(--tx);color:var(--tx)}
+
+.evf-filter-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:10px;background:var(--surf);border:1px solid var(--bd);border-radius:12px;padding:10px 12px}
+.evf-row{display:flex;align-items:center;gap:10px;background:var(--surf);border:1px solid var(--bd);border-radius:14px;padding:10px 12px;margin-bottom:6px;transition:border-color .15s;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.evf-row:hover{border-color:var(--bd2)}
+.evf-sp{width:46px;height:46px;object-fit:contain;image-rendering:pixelated;flex-shrink:0}
+.evf-info{flex:0 0 150px;min-width:0}
+@media(max-width:500px){.evf-info{flex:0 0 90px}}
+.evf-pnum{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--mu)}
+.evf-pnm{font-family:'Saira Condensed',sans-serif;font-size:15px;font-weight:700;text-transform:capitalize;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evf-types{display:flex;gap:3px;margin-top:3px;flex-wrap:wrap}
+.evf-yields{display:flex;flex-wrap:wrap;gap:6px;flex:1;align-items:center}
+.evf-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:14px;font-weight:700;color:#0a0c12;letter-spacing:.3px}
+.evf-chip-amt{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700}
+
+display:flex;align-items:center;gap:10px;background:var(--surf);border:1px solid var(--bd);border-radius:14px;padding:10px 12px;margin-bottom:6px;transition:border-color .15s;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ev-row:hover{border-color:var(--bd2)}
+.ev-rank{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--mu);width:28px;text-align:right;flex-shrink:0}
+.ev-sp{width:46px;height:46px;object-fit:contain;image-rendering:pixelated;flex-shrink:0}
+.ev-info{flex:0 0 140px;min-width:0}
+@media(max-width:500px){.ev-info{flex:0 0 90px}}
+.ev-pnum{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--mu)}
+.ev-pnm{font-family:'Saira Condensed',sans-serif;font-size:15px;font-weight:700;text-transform:capitalize;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev-types{display:flex;gap:3px;margin-top:3px;flex-wrap:wrap}
+.ev-stats{flex:1;min-width:0}
+.ev-stat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+@media(max-width:600px){.ev-stat-grid{grid-template-columns:repeat(3,1fr)}}
+.ev-stat-cell{text-align:center}
+.ev-stat-key{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--mu);letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px}
+.ev-stat-num{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;transition:color .15s}
+.ev-stat-num.hi{color:var(--ac);font-weight:700}
+.ev-stat-bar{height:4px;border-radius:2px;background:var(--surf2);margin-top:2px;overflow:hidden}
+.ev-stat-fill{height:100%;border-radius:2px}
+.ev-bst{flex-shrink:0;text-align:center;padding:0 6px}
+.ev-bst-val{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--tx)}
+.ev-bst-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--mu);letter-spacing:1px;text-transform:uppercase}
+
+
+.stat-grid{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+.stat-row{display:grid;grid-template-columns:72px 38px 1fr;align-items:center;gap:8px}
+.stat-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);text-align:right;letter-spacing:.5px;white-space:nowrap}
+.stat-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:var(--tx);text-align:right}
+.stat-bar-bg{height:8px;border-radius:4px;background:var(--surf2);overflow:hidden;width:100%}
+.stat-bar-fill{height:100%;border-radius:4px;transition:width .4s ease}
+.stat-total{display:flex;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid var(--bd);font-family:'IBM Plex Mono',monospace;font-size:11px}
+.stat-total-lbl{color:var(--mu);letter-spacing:1px;text-transform:uppercase}
+.stat-total-val{color:var(--tx);font-weight:500}
+
+/* EV YIELD */
+.ev-section{margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)}
+.ev-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.ev-chips{display:flex;flex-wrap:wrap;gap:5px}
+.ev-chip{padding:3px 10px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;color:#0a0c12;letter-spacing:.5px}
+
+/* VERSION BADGE */
+.ver-badge{position:fixed;top:0;left:0;z-index:200;background:rgba(10,12,18,.92);border-bottom-right-radius:8px;padding:3px 9px 3px 7px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--ac);letter-spacing:1.5px;border-right:1px solid var(--bd2);border-bottom:1px solid var(--bd2);pointer-events:none;user-select:none}
+
+/* ── TEAM BUILDER ── */
+.team-search-wrap{position:relative;margin-bottom:12px}
+.team-search-input{width:100%;background:var(--surf);border:1.5px solid var(--bd2);border-radius:12px;padding:10px 14px 10px 42px;color:var(--tx);font-family:'Rajdhani',sans-serif;font-size:15px;outline:none;transition:border-color .2s}
+.team-search-input:focus{border-color:var(--ac)}
+.team-search-input::placeholder{color:var(--mu)}
+.team-sico{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--mu);font-size:17px;pointer-events:none}
+.team-slots{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
+@media(max-width:560px){.team-slots{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:360px){.team-slots{grid-template-columns:repeat(2,1fr)}}
+.team-slot{background:var(--surf);border:1.5px dashed var(--bd2);border-radius:14px;padding:10px 6px 8px;text-align:center;cursor:pointer;transition:all .18s;min-height:112px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;-webkit-tap-highlight-color:transparent}
+.team-slot:hover{border-color:var(--ac)}
+.team-slot.filled{border-style:solid;border-color:var(--bd2)}
+.team-slot.filled:hover{border-color:#ff6b6a}
+.team-slot.active-pick{border-color:var(--ac);background:rgba(91,142,255,.08);animation:pulse-border .9s infinite alternate}
+@keyframes pulse-border{from{border-color:var(--ac)}to{border-color:rgba(91,142,255,.3)}}
+.slot-num{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--mu);position:absolute;top:5px;left:7px}
+.slot-empty-icon{font-size:26px;opacity:.2;margin-bottom:4px}
+.slot-empty-lbl{font-size:11px;color:var(--mu)}
+.slot-sprite{width:60px;height:60px;object-fit:contain;image-rendering:pixelated}
+.slot-name{font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:capitalize;margin:3px 0 4px}
+.slot-types{display:flex;gap:3px;justify-content:center;flex-wrap:wrap}
+.slot-remove{position:absolute;top:4px;right:5px;font-size:13px;color:var(--mu);cursor:pointer;opacity:0;transition:opacity .15s;line-height:1}
+.team-slot.filled:hover .slot-remove{opacity:1}
+.slot-remove:hover{color:#ff6b6a}
+.team-pick-bar{background:var(--surf);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:16px}
+.pick-bar-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ac);letter-spacing:2px;text-transform:uppercase;margin-bottom:9px}
+.pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:220px;overflow-y:auto}
+.pick-card{background:var(--surf2);border:1px solid var(--bd);border-radius:10px;padding:7px 5px 5px;text-align:center;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.pick-card:hover{border-color:var(--ac);transform:translateY(-1px)}
+.pick-spr{width:50px;height:50px;object-fit:contain;image-rendering:pixelated;display:block;margin:0 auto}
+.pick-name{font-family:'Saira Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:capitalize;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick-types{display:flex;gap:2px;justify-content:center;margin-top:3px;flex-wrap:wrap}
+.ptb{padding:1px 5px;border-radius:99px;font-family:'Saira Condensed',sans-serif;font-size:9px;font-weight:700;text-transform:uppercase}
+.clr-team-btn{background:transparent;border:1px solid var(--bd2);color:var(--mu);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 11px;border-radius:6px;cursor:pointer;transition:all .15s;letter-spacing:1px}
+.clr-team-btn:hover{border-color:#ff6b6a;color:#ff6b6a}
+.team-empty-state{text-align:center;padding:32px 0;color:var(--mu);font-size:14px}
+.tei{font-size:36px;opacity:.2;display:block;margin-bottom:10px}
+/* Team Analysis */
+.cov-section{background:var(--surf);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+.cov-title{font-family:'Saira Condensed',sans-serif;font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cov-subtitle{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);letter-spacing:1px}
+.score-badge{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:2px 9px;border-radius:99px;letter-spacing:1px}
+.score-good{background:rgba(95,220,130,.14);color:#5fdc82;border:1px solid rgba(95,220,130,.28)}
+.score-warn{background:rgba(245,197,24,.12);color:#f5c518;border:1px solid rgba(245,197,24,.25)}
+.score-bad{background:rgba(226,75,74,.12);color:#ff6b6a;border:1px solid rgba(226,75,74,.25)}
+.weak-meter{display:flex;flex-direction:column;gap:5px;margin-top:10px}
+.weak-row{display:grid;grid-template-columns:72px 1fr 80px;align-items:center;gap:8px}
+.weak-lbl{font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;text-align:right}
+.weak-bar-bg{height:7px;border-radius:4px;background:var(--surf2);overflow:hidden}
+.weak-bar-fill{height:100%;border-radius:4px;transition:width .4s ease}
+.weak-cnt{font-family:'IBM Plex Mono',monospace;font-size:10px}
+.cov-type-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;margin-top:10px}
+.cov-type-cell{border-radius:8px;padding:6px 8px;text-align:center;border:1px solid var(--bd)}
+.cov-type-name{font-family:'Saira Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px}
+.cov-type-bar{height:4px;border-radius:2px;background:var(--surf2);overflow:hidden;margin-bottom:2px}
+.cov-type-fill{height:100%;border-radius:2px;transition:width .4s}
+.cov-type-count{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="ver-badge">v2026.04.23</div>
+
+<nav class="nav">
+  <div class="ntab on" onclick="goTab('dex',this)">📖 Pokédex</div>
+  <div class="ntab" onclick="goTab('chk',this)">⚔️ Type Checker</div>
+  <div class="ntab" onclick="goTab('team',this)">🏆 Team Builder</div>
+  <div class="ntab" onclick="goTab('ev',this)">📈 EV Checker</div>
+  <div class="ntab" onclick="goTab('evf',this)">🌾 EV Field</div>
+</nav>
+
+<!-- POKEDEX -->
+<div class="pg on" id="pg-dex">
+  <div class="ph">
+    <div class="ptag">National · Gen I–IX · Pokemon Champions S1</div>
+    <div class="ptitle">Pokédex <span>Search</span></div>
+    <div class="psub">ค้นหา Pokémon · Build data: Legends Z-A · Pokemon Champions · SV</div>
+  </div>
+  <div class="sw">
+    <span class="sico">🔍</span>
+    <input class="si" id="dex-q" type="text" placeholder="พิมชื่อหรือเลข เช่น Pikachu, 25, Tyranitar..." oninput="doSearch()" autocomplete="off" spellcheck="false">
+    <span class="scnt" id="scnt"></span>
+  </div>
+  <div class="frow" id="frow"></div>
+  <div class="det" id="det"></div>
+  <div class="pgrid" id="pgrid"></div>
+  <div class="nores" id="nores"><span>🔭</span>ไม่พบ Pokémon ที่ค้นหา</div>
+</div>
+
+<!-- EV CHECKER -->
+<div class="pg" id="pg-ev">
+  <div class="ph">
+    <div class="ptag">Base Stats · All Pokemon · Gen I–IX</div>
+    <div class="ptitle">EV <span>Checker</span></div>
+    <div class="psub">เรียงลำดับ stat · คลิก header เพื่อ sort</div>
+  </div>
+
+  <!-- Sort bar -->
+  <div class="ev-sort-bar" id="evSortBar">
+    <span class="ev-sort-lbl">Sort by:</span>
+    <button class="ev-sb on" data-col="0" onclick="evSort(0,this)">HP</button>
+    <button class="ev-sb" data-col="1" onclick="evSort(1,this)">ATK</button>
+    <button class="ev-sb" data-col="2" onclick="evSort(2,this)">DEF</button>
+    <button class="ev-sb" data-col="3" onclick="evSort(3,this)">Sp.ATK</button>
+    <button class="ev-sb" data-col="4" onclick="evSort(4,this)">Sp.DEF</button>
+    <button class="ev-sb" data-col="5" onclick="evSort(5,this)">SPD</button>
+    <button class="ev-sb" data-col="6" onclick="evSort(6,this)">BST</button>
+    <button class="ev-sb-dir" id="evDirBtn" onclick="evToggleDir()">↓ DESC</button>
+  </div>
+
+  <!-- Search -->
+  <div class="sw" style="margin-bottom:10px">
+    <span class="sico">🔍</span>
+    <input class="si" id="ev-q" type="text" placeholder="ค้นหา Pokemon..." oninput="renderEV()" autocomplete="off" spellcheck="false">
+  </div>
+
+  <!-- List -->
+  <div id="ev-list"></div>
+</div>
+
+<!-- EV FIELD -->
+<div class="pg" id="pg-evf">
+  <div class="ph">
+    <div class="ptag">EV Yield · All Pokemon · Gen I–IX</div>
+    <div class="ptitle">EV <span>Field</span></div>
+    <div class="psub">Pokemon แต่ละตัวให้ EV อะไรเมื่อเอาชนะได้</div>
+  </div>
+
+  <!-- Filter by EV stat -->
+  <div class="evf-filter-bar" id="evfFilterBar">
+    <span class="ev-sort-lbl">Filter:</span>
+    <button class="ev-sb on" data-stat="-1" onclick="evfFilter(-1,this)">All</button>
+    <button class="ev-sb" data-stat="0" onclick="evfFilter(0,this)">HP</button>
+    <button class="ev-sb" data-stat="1" onclick="evfFilter(1,this)">ATK</button>
+    <button class="ev-sb" data-stat="2" onclick="evfFilter(2,this)">DEF</button>
+    <button class="ev-sb" data-stat="3" onclick="evfFilter(3,this)">Sp.ATK</button>
+    <button class="ev-sb" data-stat="4" onclick="evfFilter(4,this)">Sp.DEF</button>
+    <button class="ev-sb" data-stat="5" onclick="evfFilter(5,this)">SPD</button>
+  </div>
+
+  <!-- Search -->
+  <div class="sw" style="margin-bottom:10px">
+    <span class="sico">🔍</span>
+    <input class="si" id="evf-q" type="text" placeholder="ค้นหา Pokemon..." oninput="renderEVF()" autocomplete="off" spellcheck="false">
+    <span class="scnt" id="evf-cnt"></span>
+  </div>
+
+  <!-- List -->
+  <div id="evf-list"></div>
+</div>
+
+<!-- TEAM BUILDER -->
+<div class="pg" id="pg-team">
+  <div class="ph">
+    <div class="ptag">Legends Z-A · Champions · Scarlet</div>
+    <div class="ptitle">Team <span>Builder</span></div>
+    <div class="psub">สร้างทีม 6 ตัว · วิเคราะห์ Weakness Coverage อัตโนมัติ</div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase">กดช่องเพื่อเพิ่ม Pokemon</div>
+    <button class="clr-team-btn" onclick="clearTeam()">✕ Clear Team</button>
+  </div>
+  <div class="team-slots" id="team-slots"></div>
+  <div class="team-pick-bar" id="team-pick-bar" style="display:none">
+    <div class="pick-bar-lbl" id="pick-bar-lbl">เลือก Pokemon สำหรับช่องที่ 1</div>
+    <div class="team-search-wrap">
+      <span class="team-sico">🔍</span>
+      <input class="team-search-input" id="team-search" type="text" placeholder="พิมชื่อหรือเลข Pokemon..." oninput="renderPickList()" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="pick-grid" id="pick-grid"></div>
+  </div>
+  <div id="team-analysis"></div>
+</div>
+
+<!-- TYPE CHECKER -->
+<div class="pg" id="pg-chk">
+  <div class="ph">
+    <div class="ptag">Legends Z-A · Type Matchup</div>
+    <div class="ptitle">Type <span>Checker</span></div>
+    <div class="psub">Drag & Drop หรือ Tap เพื่อเลือก · รองรับ Dual-Type</div>
+  </div>
+  <div class="tipbar">💡 ลาก type มาวาง หรือ กดช่องก่อน แล้วค่อยกด type · กด ✕ บน badge เพื่อลบ</div>
+  <div class="dlayout">
+    <div class="dzone" id="dz1" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="ddp(event,1)" onclick="dzoneclk(1)">
+      <div class="dzlbl">Type 1</div>
+      <div class="dzslot" id="dz1s"><div class="dzemp"><em>⬡</em>ลาก type มาวางที่นี่<br>หรือกดเพื่อเลือก</div></div>
+    </div>
+    <div class="dzone" id="dz2" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="ddp(event,2)" onclick="dzoneclk(2)">
+      <div class="dzlbl">Type 2 <span style="color:var(--mu);font-size:10px">(optional)</span></div>
+      <div class="dzslot" id="dz2s"><div class="dzemp"><em>⬡</em>Dual-Type Pokemon<br>ใส่ type ที่ 2 ที่นี่</div></div>
+    </div>
+  </div>
+  <div class="pal">
+    <div class="pallbl">18 Types — ลาก หรือ กด เพื่อเลือก</div>
+    <div class="palrow" id="palrow"></div>
+  </div>
+  <div class="rsec">
+    <div class="rhead">
+      <div class="rtit">Matchup Results</div>
+      <button class="clrbtn" onclick="clrChk()">✕ Clear</button>
+    </div>
+    <div id="rout"><div class="rph"><span>⬡</span>เลือก Type 1 เพื่อดูผล</div></div>
+  </div>
+</div>
+
+<script>
+// ── TYPE DATA ──────────────────────────────────────────────────────────────
+var TYPES=['Normal','Fire','Water','Electric','Grass','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
+var TC={
+  Normal:{c:'#9da0a8',b:'#141518'},Fire:{c:'#ff6b35',b:'#1f0800'},Water:{c:'#4fa3e8',b:'#001828'},
+  Electric:{c:'#f5c518',b:'#181300'},Grass:{c:'#5ec44a',b:'#0a1800'},Ice:{c:'#7dd8d4',b:'#001c1b'},
+  Fighting:{c:'#c84b25',b:'#1a0700'},Poison:{c:'#a96bc4',b:'#130818'},Ground:{c:'#d4934a',b:'#1a0f00'},
+  Flying:{c:'#89a9f5',b:'#070e1e'},Psychic:{c:'#f5567c',b:'#1a0008'},Bug:{c:'#8db832',b:'#0e1300'},
+  Rock:{c:'#b5a86a',b:'#191700'},Ghost:{c:'#6660b0',b:'#0a091e'},Dragon:{c:'#4b6ee8',b:'#050b1e'},
+  Dark:{c:'#6b67a8',b:'#0a091e'},Steel:{c:'#a8b8c8',b:'#0e1215'},Fairy:{c:'#e882b0',b:'#1a0011'}
+};
+function tc(t){return TC[t]||{c:'#888',b:'#111'}}
+
+var CHART={
+  Normal:{w:['Fighting'],r:[],i:['Ghost']},
+  Fire:{w:['Water','Ground','Rock'],r:['Fire','Grass','Ice','Bug','Steel','Fairy'],i:[]},
+  Water:{w:['Electric','Grass'],r:['Fire','Water','Ice','Steel'],i:[]},
+  Electric:{w:['Ground'],r:['Electric','Flying','Steel'],i:[]},
+  Grass:{w:['Fire','Ice','Poison','Flying','Bug'],r:['Water','Electric','Grass','Ground'],i:[]},
+  Ice:{w:['Fire','Fighting','Rock','Steel'],r:['Ice'],i:[]},
+  Fighting:{w:['Flying','Psychic','Fairy'],r:['Rock','Bug','Dark'],i:[]},
+  Poison:{w:['Ground','Psychic'],r:['Grass','Fighting','Poison','Bug','Fairy'],i:[]},
+  Ground:{w:['Water','Grass','Ice'],r:['Poison','Rock'],i:['Electric']},
+  Flying:{w:['Electric','Ice','Rock'],r:['Grass','Fighting','Bug'],i:['Ground']},
+  Psychic:{w:['Bug','Ghost','Dark'],r:['Fighting','Psychic'],i:[]},
+  Bug:{w:['Fire','Flying','Rock'],r:['Grass','Fighting','Ground'],i:[]},
+  Rock:{w:['Water','Grass','Fighting','Ground','Steel'],r:['Normal','Fire','Poison','Flying'],i:[]},
+  Ghost:{w:['Ghost','Dark'],r:['Poison','Bug'],i:['Normal','Fighting']},
+  Dragon:{w:['Ice','Dragon','Fairy'],r:['Fire','Water','Electric','Grass'],i:[]},
+  Dark:{w:['Fighting','Bug','Fairy'],r:['Ghost','Dark'],i:['Psychic']},
+  Steel:{w:['Fire','Fighting','Ground'],r:['Normal','Grass','Ice','Flying','Psychic','Bug','Rock','Dragon','Steel','Fairy'],i:['Poison']},
+  Fairy:{w:['Poison','Steel'],r:['Fighting','Bug','Dark'],i:['Dragon']}
+};
+
+function calcMu(t1,t2){
+  var r={};
+  TYPES.forEach(function(atk){
+    var m=1;
+    if(CHART[t1].i.indexOf(atk)>=0||(t2&&CHART[t2].i.indexOf(atk)>=0)){r[atk]=0;return}
+    if(CHART[t1].w.indexOf(atk)>=0)m*=2;
+    if(CHART[t1].r.indexOf(atk)>=0)m*=0.5;
+    if(t2){if(CHART[t2].w.indexOf(atk)>=0)m*=2;if(CHART[t2].r.indexOf(atk)>=0)m*=0.5}
+    r[atk]=m;
+  });
+  return r;
+}
+
+// ── POKEMON DATA ──────────────────────────────────────────────────────────
+// [id, name, type1, type2|null]
+var DEX=[
+[1,'Bulbasaur','Grass','Poison'],[2,'Ivysaur','Grass','Poison'],[3,'Venusaur','Grass','Poison'],[4,'Charmander','Fire',null],[5,'Charmeleon','Fire',null],[6,'Charizard','Fire','Flying'],[7,'Squirtle','Water',null],[8,'Wartortle','Water',null],[9,'Blastoise','Water',null],[10,'Caterpie','Bug',null],[11,'Metapod','Bug',null],[12,'Butterfree','Bug','Flying'],[13,'Weedle','Bug','Poison'],[14,'Kakuna','Bug','Poison'],[15,'Beedrill','Bug','Poison'],[16,'Pidgey','Normal','Flying'],[17,'Pidgeotto','Normal','Flying'],[18,'Pidgeot','Normal','Flying'],[19,'Rattata','Normal',null],[20,'Raticate','Normal',null],[21,'Spearow','Normal','Flying'],[22,'Fearow','Normal','Flying'],[23,'Ekans','Poison',null],[24,'Arbok','Poison',null],[25,'Pikachu','Electric',null],[26,'Raichu','Electric',null],[27,'Sandshrew','Ground',null],[28,'Sandslash','Ground',null],[29,'Nidoran♀','Poison',null],[30,'Nidorina','Poison',null],[31,'Nidoqueen','Poison','Ground'],[32,'Nidoran♂','Poison',null],[33,'Nidorino','Poison',null],[34,'Nidoking','Poison','Ground'],[35,'Clefairy','Fairy',null],[36,'Clefable','Fairy',null],[37,'Vulpix','Fire',null],[38,'Ninetales','Fire',null],[39,'Jigglypuff','Normal','Fairy'],[40,'Wigglytuff','Normal','Fairy'],[41,'Zubat','Poison','Flying'],[42,'Golbat','Poison','Flying'],[43,'Oddish','Grass','Poison'],[44,'Gloom','Grass','Poison'],[45,'Vileplume','Grass','Poison'],[46,'Paras','Bug','Grass'],[47,'Parasect','Bug','Grass'],[48,'Venonat','Bug','Poison'],[49,'Venomoth','Bug','Poison'],[50,'Diglett','Ground',null],[51,'Dugtrio','Ground',null],[52,'Meowth','Normal',null],[53,'Persian','Normal',null],[54,'Psyduck','Water',null],[55,'Golduck','Water',null],[56,'Mankey','Fighting',null],[57,'Primeape','Fighting',null],[58,'Growlithe','Fire',null],[59,'Arcanine','Fire',null],[60,'Poliwag','Water',null],[61,'Poliwhirl','Water',null],[62,'Poliwrath','Water','Fighting'],[63,'Abra','Psychic',null],[64,'Kadabra','Psychic',null],[65,'Alakazam','Psychic',null],[66,'Machop','Fighting',null],[67,'Machoke','Fighting',null],[68,'Machamp','Fighting',null],[69,'Bellsprout','Grass','Poison'],[70,'Weepinbell','Grass','Poison'],[71,'Victreebel','Grass','Poison'],[72,'Tentacool','Water','Poison'],[73,'Tentacruel','Water','Poison'],[74,'Geodude','Rock','Ground'],[75,'Graveler','Rock','Ground'],[76,'Golem','Rock','Ground'],[77,'Ponyta','Fire',null],[78,'Rapidash','Fire',null],[79,'Slowpoke','Water','Psychic'],[80,'Slowbro','Water','Psychic'],[81,'Magnemite','Electric','Steel'],[82,'Magneton','Electric','Steel'],[83,'Farfetch\'d','Normal','Flying'],[84,'Doduo','Normal','Flying'],[85,'Dodrio','Normal','Flying'],[86,'Seel','Water',null],[87,'Dewgong','Water','Ice'],[88,'Grimer','Poison',null],[89,'Muk','Poison',null],[90,'Shellder','Water',null],[91,'Cloyster','Water','Ice'],[92,'Gastly','Ghost','Poison'],[93,'Haunter','Ghost','Poison'],[94,'Gengar','Ghost','Poison'],[95,'Onix','Rock','Ground'],[96,'Drowzee','Psychic',null],[97,'Hypno','Psychic',null],[98,'Krabby','Water',null],[99,'Kingler','Water',null],[100,'Voltorb','Electric',null],[101,'Electrode','Electric',null],[102,'Exeggcute','Grass','Psychic'],[103,'Exeggutor','Grass','Psychic'],[104,'Cubone','Ground',null],[105,'Marowak','Ground',null],[106,'Hitmonlee','Fighting',null],[107,'Hitmonchan','Fighting',null],[108,'Lickitung','Normal',null],[109,'Koffing','Poison',null],[110,'Weezing','Poison',null],[111,'Rhyhorn','Ground','Rock'],[112,'Rhydon','Ground','Rock'],[113,'Chansey','Normal',null],[114,'Tangela','Grass',null],[115,'Kangaskhan','Normal',null],[116,'Horsea','Water',null],[117,'Seadra','Water',null],[118,'Goldeen','Water',null],[119,'Seaking','Water',null],[120,'Staryu','Water',null],[121,'Starmie','Water','Psychic'],[122,'Mr. Mime','Psychic','Fairy'],[123,'Scyther','Bug','Flying'],[124,'Jynx','Ice','Psychic'],[125,'Electabuzz','Electric',null],[126,'Magmar','Fire',null],[127,'Pinsir','Bug',null],[128,'Tauros','Normal',null],[129,'Magikarp','Water',null],[130,'Gyarados','Water','Flying'],[131,'Lapras','Water','Ice'],[132,'Ditto','Normal',null],[133,'Eevee','Normal',null],[134,'Vaporeon','Water',null],[135,'Jolteon','Electric',null],[136,'Flareon','Fire',null],[137,'Porygon','Normal',null],[138,'Omanyte','Rock','Water'],[139,'Omastar','Rock','Water'],[140,'Kabuto','Rock','Water'],[141,'Kabutops','Rock','Water'],[142,'Aerodactyl','Rock','Flying'],[143,'Snorlax','Normal',null],[144,'Articuno','Ice','Flying'],[145,'Zapdos','Electric','Flying'],[146,'Moltres','Fire','Flying'],[147,'Dratini','Dragon',null],[148,'Dragonair','Dragon',null],[149,'Dragonite','Dragon','Flying'],[150,'Mewtwo','Psychic',null],[151,'Mew','Psychic',null],[152,'Chikorita','Grass',null],[153,'Bayleef','Grass',null],[154,'Meganium','Grass',null],[155,'Cyndaquil','Fire',null],[156,'Quilava','Fire',null],[157,'Typhlosion','Fire',null],[158,'Totodile','Water',null],[159,'Croconaw','Water',null],[160,'Feraligatr','Water',null],[161,'Sentret','Normal',null],[162,'Furret','Normal',null],[163,'Hoothoot','Normal','Flying'],[164,'Noctowl','Normal','Flying'],[165,'Ledyba','Bug','Flying'],[166,'Ledian','Bug','Flying'],[167,'Spinarak','Bug','Poison'],[168,'Ariados','Bug','Poison'],[169,'Crobat','Poison','Flying'],[170,'Chinchou','Water','Electric'],[171,'Lanturn','Water','Electric'],[172,'Pichu','Electric',null],[173,'Cleffa','Fairy',null],[174,'Igglybuff','Normal','Fairy'],[175,'Togepi','Fairy',null],[176,'Togetic','Fairy','Flying'],[177,'Natu','Psychic','Flying'],[178,'Xatu','Psychic','Flying'],[179,'Mareep','Electric',null],[180,'Flaaffy','Electric',null],[181,'Ampharos','Electric',null],[182,'Bellossom','Grass',null],[183,'Marill','Water','Fairy'],[184,'Azumarill','Water','Fairy'],[185,'Sudowoodo','Rock',null],[186,'Politoed','Water',null],[187,'Hoppip','Grass','Flying'],[188,'Skiploom','Grass','Flying'],[189,'Jumpluff','Grass','Flying'],[190,'Aipom','Normal',null],[191,'Sunkern','Grass',null],[192,'Sunflora','Grass',null],[193,'Yanma','Bug','Flying'],[194,'Wooper','Water','Ground'],[195,'Quagsire','Water','Ground'],[196,'Espeon','Psychic',null],[197,'Umbreon','Dark',null],[198,'Murkrow','Dark','Flying'],[199,'Slowking','Water','Psychic'],[200,'Misdreavus','Ghost',null],[201,'Unown','Psychic',null],[202,'Wobbuffet','Psychic',null],[203,'Girafarig','Normal','Psychic'],[204,'Pineco','Bug',null],[205,'Forretress','Bug','Steel'],[206,'Dunsparce','Normal',null],[207,'Gligar','Ground','Flying'],[208,'Steelix','Steel','Ground'],[209,'Snubbull','Fairy',null],[210,'Granbull','Fairy',null],[211,'Qwilfish','Water','Poison'],[212,'Scizor','Bug','Steel'],[213,'Shuckle','Bug','Rock'],[214,'Heracross','Bug','Fighting'],[215,'Sneasel','Dark','Ice'],[216,'Teddiursa','Normal',null],[217,'Ursaring','Normal',null],[218,'Slugma','Fire',null],[219,'Magcargo','Fire','Rock'],[220,'Swinub','Ice','Ground'],[221,'Piloswine','Ice','Ground'],[222,'Corsola','Water','Rock'],[223,'Remoraid','Water',null],[224,'Octillery','Water',null],[225,'Delibird','Ice','Flying'],[226,'Mantine','Water','Flying'],[227,'Skarmory','Steel','Flying'],[228,'Houndour','Dark','Fire'],[229,'Houndoom','Dark','Fire'],[230,'Kingdra','Water','Dragon'],[231,'Phanpy','Ground',null],[232,'Donphan','Ground',null],[233,'Porygon2','Normal',null],[234,'Stantler','Normal',null],[235,'Smeargle','Normal',null],[236,'Tyrogue','Fighting',null],[237,'Hitmontop','Fighting',null],[238,'Smoochum','Ice','Psychic'],[239,'Elekid','Electric',null],[240,'Magby','Fire',null],[241,'Miltank','Normal',null],[242,'Blissey','Normal',null],[243,'Raikou','Electric',null],[244,'Entei','Fire',null],[245,'Suicune','Water',null],[246,'Larvitar','Rock','Ground'],[247,'Pupitar','Rock','Ground'],[248,'Tyranitar','Rock','Dark'],[249,'Lugia','Psychic','Flying'],[250,'Ho-Oh','Fire','Flying'],[251,'Celebi','Psychic','Grass'],[252,'Treecko','Grass',null],[253,'Grovyle','Grass',null],[254,'Sceptile','Grass',null],[255,'Torchic','Fire',null],[256,'Combusken','Fire','Fighting'],[257,'Blaziken','Fire','Fighting'],[258,'Mudkip','Water',null],[259,'Marshtomp','Water','Ground'],[260,'Swampert','Water','Ground'],[261,'Poochyena','Dark',null],[262,'Mightyena','Dark',null],[263,'Zigzagoon','Normal',null],[264,'Linoone','Normal',null],[265,'Wurmple','Bug',null],[266,'Silcoon','Bug',null],[267,'Beautifly','Bug','Flying'],[268,'Cascoon','Bug',null],[269,'Dustox','Bug','Poison'],[270,'Lotad','Water','Grass'],[271,'Lombre','Water','Grass'],[272,'Ludicolo','Water','Grass'],[273,'Seedot','Grass',null],[274,'Nuzleaf','Grass','Dark'],[275,'Shiftry','Grass','Dark'],[276,'Taillow','Normal','Flying'],[277,'Swellow','Normal','Flying'],[278,'Wingull','Water','Flying'],[279,'Pelipper','Water','Flying'],[280,'Ralts','Psychic','Fairy'],[281,'Kirlia','Psychic','Fairy'],[282,'Gardevoir','Psychic','Fairy'],[283,'Surskit','Bug','Water'],[284,'Masquerain','Bug','Flying'],[285,'Shroomish','Grass',null],[286,'Breloom','Grass','Fighting'],[287,'Slakoth','Normal',null],[288,'Vigoroth','Normal',null],[289,'Slaking','Normal',null],[290,'Nincada','Bug','Ground'],[291,'Ninjask','Bug','Flying'],[292,'Shedinja','Bug','Ghost'],[293,'Whismur','Normal',null],[294,'Loudred','Normal',null],[295,'Exploud','Normal',null],[296,'Makuhita','Fighting',null],[297,'Hariyama','Fighting',null],[298,'Azurill','Normal','Fairy'],[299,'Nosepass','Rock',null],[300,'Skitty','Normal',null],[301,'Delcatty','Normal',null],[302,'Sableye','Dark','Ghost'],[303,'Mawile','Steel','Fairy'],[304,'Aron','Steel','Rock'],[305,'Lairon','Steel','Rock'],[306,'Aggron','Steel','Rock'],[307,'Meditite','Fighting','Psychic'],[308,'Medicham','Fighting','Psychic'],[309,'Electrike','Electric',null],[310,'Manectric','Electric',null],[311,'Plusle','Electric',null],[312,'Minun','Electric',null],[313,'Volbeat','Bug',null],[314,'Illumise','Bug',null],[315,'Roselia','Grass','Poison'],[316,'Gulpin','Poison',null],[317,'Swalot','Poison',null],[318,'Carvanha','Water','Dark'],[319,'Sharpedo','Water','Dark'],[320,'Wailmer','Water',null],[321,'Wailord','Water',null],[322,'Numel','Fire','Ground'],[323,'Camerupt','Fire','Ground'],[324,'Torkoal','Fire',null],[325,'Spoink','Psychic',null],[326,'Grumpig','Psychic',null],[327,'Spinda','Normal',null],[328,'Trapinch','Ground',null],[329,'Vibrava','Ground','Dragon'],[330,'Flygon','Ground','Dragon'],[331,'Cacnea','Grass',null],[332,'Cacturne','Grass','Dark'],[333,'Swablu','Normal','Flying'],[334,'Altaria','Dragon','Flying'],[335,'Zangoose','Normal',null],[336,'Seviper','Poison',null],[337,'Lunatone','Rock','Psychic'],[338,'Solrock','Rock','Psychic'],[339,'Barboach','Water','Ground'],[340,'Whiscash','Water','Ground'],[341,'Corphish','Water',null],[342,'Crawdaunt','Water','Dark'],[343,'Baltoy','Ground','Psychic'],[344,'Claydol','Ground','Psychic'],[345,'Lileep','Rock','Grass'],[346,'Cradily','Rock','Grass'],[347,'Anorith','Rock','Bug'],[348,'Armaldo','Rock','Bug'],[349,'Feebas','Water',null],[350,'Milotic','Water',null],[351,'Castform','Normal',null],[352,'Kecleon','Normal',null],[353,'Shuppet','Ghost',null],[354,'Banette','Ghost',null],[355,'Duskull','Ghost',null],[356,'Dusclops','Ghost',null],[357,'Tropius','Grass','Flying'],[358,'Chimecho','Psychic',null],[359,'Absol','Dark',null],[360,'Wynaut','Psychic',null],[361,'Snorunt','Ice',null],[362,'Glalie','Ice',null],[363,'Spheal','Ice','Water'],[364,'Sealeo','Ice','Water'],[365,'Walrein','Ice','Water'],[366,'Clamperl','Water',null],[367,'Huntail','Water',null],[368,'Gorebyss','Water',null],[369,'Relicanth','Water','Rock'],[370,'Luvdisc','Water',null],[371,'Bagon','Dragon',null],[372,'Shelgon','Dragon',null],[373,'Salamence','Dragon','Flying'],[374,'Beldum','Steel','Psychic'],[375,'Metang','Steel','Psychic'],[376,'Metagross','Steel','Psychic'],[377,'Regirock','Rock',null],[378,'Regice','Ice',null],[379,'Registeel','Steel',null],[380,'Latias','Dragon','Psychic'],[381,'Latios','Dragon','Psychic'],[382,'Kyogre','Water',null],[383,'Groudon','Ground',null],[384,'Rayquaza','Dragon','Flying'],[385,'Jirachi','Steel','Psychic'],[386,'Deoxys','Psychic',null],[387,'Turtwig','Grass',null],[388,'Grotle','Grass',null],[389,'Torterra','Grass','Ground'],[390,'Chimchar','Fire',null],[391,'Monferno','Fire','Fighting'],[392,'Infernape','Fire','Fighting'],[393,'Piplup','Water',null],[394,'Prinplup','Water',null],[395,'Empoleon','Water','Steel'],[396,'Starly','Normal','Flying'],[397,'Staravia','Normal','Flying'],[398,'Staraptor','Normal','Flying'],[399,'Bidoof','Normal',null],[400,'Bibarel','Normal','Water'],[401,'Kricketot','Bug',null],[402,'Kricketune','Bug',null],[403,'Shinx','Electric',null],[404,'Luxio','Electric',null],[405,'Luxray','Electric',null],[406,'Budew','Grass','Poison'],[407,'Roserade','Grass','Poison'],[408,'Cranidos','Rock',null],[409,'Rampardos','Rock',null],[410,'Shieldon','Rock','Steel'],[411,'Bastiodon','Rock','Steel'],[412,'Burmy','Bug',null],[413,'Wormadam','Bug','Grass'],[414,'Mothim','Bug','Flying'],[415,'Combee','Bug','Flying'],[416,'Vespiquen','Bug','Flying'],[417,'Pachirisu','Electric',null],[418,'Buizel','Water',null],[419,'Floatzel','Water',null],[420,'Cherubi','Grass',null],[421,'Cherrim','Grass',null],[422,'Shellos','Water',null],[423,'Gastrodon','Water','Ground'],[424,'Ambipom','Normal',null],[425,'Drifloon','Ghost','Flying'],[426,'Drifblim','Ghost','Flying'],[427,'Buneary','Normal',null],[428,'Lopunny','Normal',null],[429,'Mismagius','Ghost',null],[430,'Honchkrow','Dark','Flying'],[431,'Glameow','Normal',null],[432,'Purugly','Normal',null],[433,'Chingling','Psychic',null],[434,'Stunky','Poison','Dark'],[435,'Skuntank','Poison','Dark'],[436,'Bronzor','Steel','Psychic'],[437,'Bronzong','Steel','Psychic'],[438,'Bonsly','Rock',null],[439,'Mime Jr.','Psychic','Fairy'],[440,'Happiny','Normal',null],[441,'Chatot','Normal','Flying'],[442,'Spiritomb','Ghost','Dark'],[443,'Gible','Dragon','Ground'],[444,'Gabite','Dragon','Ground'],[445,'Garchomp','Dragon','Ground'],[446,'Munchlax','Normal',null],[447,'Riolu','Fighting',null],[448,'Lucario','Fighting','Steel'],[449,'Hippopotas','Ground',null],[450,'Hippowdon','Ground',null],[451,'Skorupi','Poison','Bug'],[452,'Drapion','Poison','Dark'],[453,'Croagunk','Poison','Fighting'],[454,'Toxicroak','Poison','Fighting'],[455,'Carnivine','Grass',null],[456,'Finneon','Water',null],[457,'Lumineon','Water',null],[458,'Mantyke','Water','Flying'],[459,'Snover','Grass','Ice'],[460,'Abomasnow','Grass','Ice'],[461,'Weavile','Dark','Ice'],[462,'Magnezone','Electric','Steel'],[463,'Lickilicky','Normal',null],[464,'Rhyperior','Ground','Rock'],[465,'Tangrowth','Grass',null],[466,'Electivire','Electric',null],[467,'Magmortar','Fire',null],[468,'Togekiss','Fairy','Flying'],[469,'Yanmega','Bug','Flying'],[470,'Leafeon','Grass',null],[471,'Glaceon','Ice',null],[472,'Gliscor','Ground','Flying'],[473,'Mamoswine','Ice','Ground'],[474,'Porygon-Z','Normal',null],[475,'Gallade','Psychic','Fighting'],[476,'Probopass','Rock','Steel'],[477,'Dusknoir','Ghost',null],[478,'Froslass','Ice','Ghost'],[479,'Rotom','Electric','Ghost'],[480,'Uxie','Psychic',null],[481,'Mesprit','Psychic',null],[482,'Azelf','Psychic',null],[483,'Dialga','Steel','Dragon'],[484,'Palkia','Water','Dragon'],[485,'Heatran','Fire','Steel'],[486,'Regigigas','Normal',null],[487,'Giratina','Ghost','Dragon'],[488,'Cresselia','Psychic',null],[489,'Phione','Water',null],[490,'Manaphy','Water',null],[491,'Darkrai','Dark',null],[492,'Shaymin','Grass',null],[493,'Arceus','Normal',null],[494,'Victini','Psychic','Fire'],[495,'Snivy','Grass',null],[496,'Servine','Grass',null],[497,'Serperior','Grass',null],[498,'Tepig','Fire',null],[499,'Pignite','Fire','Fighting'],[500,'Emboar','Fire','Fighting'],[501,'Oshawott','Water',null],[502,'Dewott','Water',null],[503,'Samurott','Water',null],[504,'Patrat','Normal',null],[505,'Watchog','Normal',null],[506,'Lillipup','Normal',null],[507,'Herdier','Normal',null],[508,'Stoutland','Normal',null],[509,'Purrloin','Dark',null],[510,'Liepard','Dark',null],[511,'Pansage','Grass',null],[512,'Simisage','Grass',null],[513,'Pansear','Fire',null],[514,'Simisear','Fire',null],[515,'Panpour','Water',null],[516,'Simipour','Water',null],[517,'Munna','Psychic',null],[518,'Musharna','Psychic',null],[519,'Pidove','Normal','Flying'],[520,'Tranquill','Normal','Flying'],[521,'Unfezant','Normal','Flying'],[522,'Blitzle','Electric',null],[523,'Zebstrika','Electric',null],[524,'Roggenrola','Rock',null],[525,'Boldore','Rock',null],[526,'Gigalith','Rock',null],[527,'Woobat','Psychic','Flying'],[528,'Swoobat','Psychic','Flying'],[529,'Drilbur','Ground',null],[530,'Excadrill','Ground','Steel'],[531,'Audino','Normal',null],[532,'Timburr','Fighting',null],[533,'Gurdurr','Fighting',null],[534,'Conkeldurr','Fighting',null],[535,'Tympole','Water',null],[536,'Palpitoad','Water','Ground'],[537,'Seismitoad','Water','Ground'],[538,'Throh','Fighting',null],[539,'Sawk','Fighting',null],[540,'Sewaddle','Bug','Grass'],[541,'Swadloon','Bug','Grass'],[542,'Leavanny','Bug','Grass'],[543,'Venipede','Bug','Poison'],[544,'Whirlipede','Bug','Poison'],[545,'Scolipede','Bug','Poison'],[546,'Cottonee','Grass','Fairy'],[547,'Whimsicott','Grass','Fairy'],[548,'Petilil','Grass',null],[549,'Lilligant','Grass',null],[550,'Basculin','Water',null],[551,'Sandile','Ground','Dark'],[552,'Krokorok','Ground','Dark'],[553,'Krookodile','Ground','Dark'],[554,'Darumaka','Fire',null],[555,'Darmanitan','Fire',null],[556,'Maractus','Grass',null],[557,'Dwebble','Bug','Rock'],[558,'Crustle','Bug','Rock'],[559,'Scraggy','Dark','Fighting'],[560,'Scrafty','Dark','Fighting'],[561,'Sigilyph','Psychic','Flying'],[562,'Yamask','Ghost',null],[563,'Cofagrigus','Ghost',null],[564,'Tirtouga','Water','Rock'],[565,'Carracosta','Water','Rock'],[566,'Archen','Rock','Flying'],[567,'Archeops','Rock','Flying'],[568,'Trubbish','Poison',null],[569,'Garbodor','Poison',null],[570,'Zorua','Dark',null],[571,'Zoroark','Dark',null],[572,'Minccino','Normal',null],[573,'Cinccino','Normal',null],[574,'Gothita','Psychic',null],[575,'Gothorita','Psychic',null],[576,'Gothitelle','Psychic',null],[577,'Solosis','Psychic',null],[578,'Duosion','Psychic',null],[579,'Reuniclus','Psychic',null],[580,'Ducklett','Water','Flying'],[581,'Swanna','Water','Flying'],[582,'Vanillite','Ice',null],[583,'Vanillish','Ice',null],[584,'Vanilluxe','Ice',null],[585,'Deerling','Normal','Grass'],[586,'Sawsbuck','Normal','Grass'],[587,'Emolga','Electric','Flying'],[588,'Karrablast','Bug',null],[589,'Escavalier','Bug','Steel'],[590,'Foongus','Grass','Poison'],[591,'Amoonguss','Grass','Poison'],[592,'Frillish','Water','Ghost'],[593,'Jellicent','Water','Ghost'],[594,'Alomomola','Water',null],[595,'Joltik','Bug','Electric'],[596,'Galvantula','Bug','Electric'],[597,'Ferroseed','Grass','Steel'],[598,'Ferrothorn','Grass','Steel'],[599,'Klink','Steel',null],[600,'Klang','Steel',null],[601,'Klinklang','Steel',null],[602,'Tynamo','Electric',null],[603,'Eelektrik','Electric',null],[604,'Eelektross','Electric',null],[605,'Elgyem','Psychic',null],[606,'Beheeyem','Psychic',null],[607,'Litwick','Ghost','Fire'],[608,'Lampent','Ghost','Fire'],[609,'Chandelure','Ghost','Fire'],[610,'Axew','Dragon',null],[611,'Fraxure','Dragon',null],[612,'Haxorus','Dragon',null],[613,'Cubchoo','Ice',null],[614,'Beartic','Ice',null],[615,'Cryogonal','Ice',null],[616,'Shelmet','Bug',null],[617,'Accelgor','Bug',null],[618,'Stunfisk','Ground','Electric'],[619,'Mienfoo','Fighting',null],[620,'Mienshao','Fighting',null],[621,'Druddigon','Dragon',null],[622,'Golett','Ground','Ghost'],[623,'Golurk','Ground','Ghost'],[624,'Pawniard','Dark','Steel'],[625,'Bisharp','Dark','Steel'],[626,'Bouffalant','Normal',null],[627,'Rufflet','Normal','Flying'],[628,'Braviary','Normal','Flying'],[629,'Vullaby','Dark','Flying'],[630,'Mandibuzz','Dark','Flying'],[631,'Heatmor','Fire',null],[632,'Durant','Bug','Steel'],[633,'Deino','Dark','Dragon'],[634,'Zweilous','Dark','Dragon'],[635,'Hydreigon','Dark','Dragon'],[636,'Larvesta','Bug','Fire'],[637,'Volcarona','Bug','Fire'],[638,'Cobalion','Steel','Fighting'],[639,'Terrakion','Rock','Fighting'],[640,'Virizion','Grass','Fighting'],[641,'Tornadus','Flying',null],[642,'Thundurus','Electric','Flying'],[643,'Reshiram','Dragon','Fire'],[644,'Zekrom','Dragon','Electric'],[645,'Landorus','Ground','Flying'],[646,'Kyurem','Dragon','Ice'],[647,'Keldeo','Water','Fighting'],[648,'Meloetta','Normal','Psychic'],[649,'Genesect','Bug','Steel'],[650,'Chespin','Grass',null],[651,'Quilladin','Grass',null],[652,'Chesnaught','Grass','Fighting'],[653,'Fennekin','Fire',null],[654,'Braixen','Fire',null],[655,'Delphox','Fire','Psychic'],[656,'Froakie','Water',null],[657,'Frogadier','Water',null],[658,'Greninja','Water','Dark'],[659,'Bunnelby','Normal',null],[660,'Diggersby','Normal','Ground'],[661,'Fletchling','Normal','Flying'],[662,'Fletchinder','Fire','Flying'],[663,'Talonflame','Fire','Flying'],[664,'Scatterbug','Bug',null],[665,'Spewpa','Bug',null],[666,'Vivillon','Bug','Flying'],[667,'Litleo','Fire','Normal'],[668,'Pyroar','Fire','Normal'],[669,'Flabébé','Fairy',null],[670,'Floette','Fairy',null],[671,'Florges','Fairy',null],[672,'Skiddo','Grass',null],[673,'Gogoat','Grass',null],[674,'Pancham','Fighting',null],[675,'Pangoro','Fighting','Dark'],[676,'Furfrou','Normal',null],[677,'Espurr','Psychic',null],[678,'Meowstic','Psychic',null],[679,'Honedge','Steel','Ghost'],[680,'Doublade','Steel','Ghost'],[681,'Aegislash','Steel','Ghost'],[682,'Spritzee','Fairy',null],[683,'Aromatisse','Fairy',null],[684,'Swirlix','Fairy',null],[685,'Slurpuff','Fairy',null],[686,'Inkay','Dark','Psychic'],[687,'Malamar','Dark','Psychic'],[688,'Binacle','Rock','Water'],[689,'Barbaracle','Rock','Water'],[690,'Skrelp','Poison','Water'],[691,'Dragalge','Poison','Dragon'],[692,'Clauncher','Water',null],[693,'Clawitzer','Water',null],[694,'Helioptile','Electric','Normal'],[695,'Heliolisk','Electric','Normal'],[696,'Tyrunt','Rock','Dragon'],[697,'Tyrantrum','Rock','Dragon'],[698,'Amaura','Rock','Ice'],[699,'Aurorus','Rock','Ice'],[700,'Sylveon','Fairy',null],[701,'Hawlucha','Fighting','Flying'],[702,'Dedenne','Electric','Fairy'],[703,'Carbink','Rock','Fairy'],[704,'Goomy','Dragon',null],[705,'Sliggoo','Dragon',null],[706,'Goodra','Dragon',null],[707,'Klefki','Steel','Fairy'],[708,'Phantump','Ghost','Grass'],[709,'Trevenant','Ghost','Grass'],[710,'Pumpkaboo','Ghost','Grass'],[711,'Gourgeist','Ghost','Grass'],[712,'Bergmite','Ice',null],[713,'Avalugg','Ice',null],[714,'Noibat','Flying','Dragon'],[715,'Noivern','Flying','Dragon'],[716,'Xerneas','Fairy',null],[717,'Yveltal','Dark','Flying'],[718,'Zygarde','Dragon','Ground'],[719,'Diancie','Rock','Fairy'],[720,'Hoopa','Psychic','Ghost'],[721,'Volcanion','Fire','Water'],[722,'Rowlet','Grass','Flying'],[723,'Dartrix','Grass','Flying'],[724,'Decidueye','Grass','Ghost'],[725,'Litten','Fire',null],[726,'Torracat','Fire',null],[727,'Incineroar','Fire','Dark'],[728,'Popplio','Water',null],[729,'Brionne','Water',null],[730,'Primarina','Water','Fairy'],[731,'Pikipek','Normal','Flying'],[732,'Trumbeak','Normal','Flying'],[733,'Toucannon','Normal','Flying'],[734,'Yungoos','Normal',null],[735,'Gumshoos','Normal',null],[736,'Grubbin','Bug',null],[737,'Charjabug','Bug','Electric'],[738,'Vikavolt','Bug','Electric'],[739,'Crabrawler','Fighting',null],[740,'Crabominable','Fighting','Ice'],[741,'Oricorio','Fire','Flying'],[742,'Cutiefly','Bug','Fairy'],[743,'Ribombee','Bug','Fairy'],[744,'Rockruff','Rock',null],[745,'Lycanroc','Rock',null],[746,'Wishiwashi','Water',null],[747,'Mareanie','Poison','Water'],[748,'Toxapex','Poison','Water'],[749,'Mudbray','Ground',null],[750,'Mudsdale','Ground',null],[751,'Dewpider','Water','Bug'],[752,'Araquanid','Water','Bug'],[753,'Fomantis','Grass',null],[754,'Lurantis','Grass',null],[755,'Morelull','Grass','Fairy'],[756,'Shiinotic','Grass','Fairy'],[757,'Salandit','Poison','Fire'],[758,'Salazzle','Poison','Fire'],[759,'Stufful','Normal','Fighting'],[760,'Bewear','Normal','Fighting'],[761,'Bounsweet','Grass',null],[762,'Steenee','Grass',null],[763,'Tsareena','Grass',null],[764,'Comfey','Fairy',null],[765,'Oranguru','Normal','Psychic'],[766,'Passimian','Fighting',null],[767,'Wimpod','Bug','Water'],[768,'Golisopod','Bug','Water'],[769,'Sandygast','Ghost','Ground'],[770,'Palossand','Ghost','Ground'],[771,'Pyukumuku','Water',null],[772,'Type: Null','Normal',null],[773,'Silvally','Normal',null],[774,'Minior','Rock','Flying'],[775,'Komala','Normal',null],[776,'Turtonator','Fire','Dragon'],[777,'Togedemaru','Electric','Steel'],[778,'Mimikyu','Ghost','Fairy'],[779,'Bruxish','Water','Psychic'],[780,'Drampa','Normal','Dragon'],[781,'Dhelmise','Ghost','Grass'],[782,'Jangmo-o','Dragon',null],[783,'Hakamo-o','Dragon','Fighting'],[784,'Kommo-o','Dragon','Fighting'],[785,'Tapu Koko','Electric','Fairy'],[786,'Tapu Lele','Psychic','Fairy'],[787,'Tapu Bulu','Grass','Fairy'],[788,'Tapu Fini','Water','Fairy'],[789,'Cosmog','Psychic',null],[790,'Cosmoem','Psychic',null],[791,'Solgaleo','Psychic','Steel'],[792,'Lunala','Psychic','Ghost'],[793,'Nihilego','Rock','Poison'],[794,'Buzzwole','Bug','Fighting'],[795,'Pheromosa','Bug','Fighting'],[796,'Xurkitree','Electric',null],[797,'Celesteela','Steel','Flying'],[798,'Kartana','Grass','Steel'],[799,'Guzzlord','Dark','Dragon'],[800,'Necrozma','Psychic',null],[801,'Magearna','Steel','Fairy'],[802,'Marshadow','Fighting','Ghost'],[803,'Poipole','Poison',null],[804,'Naganadel','Poison','Dragon'],[805,'Stakataka','Rock','Steel'],[806,'Blacephalon','Fire','Ghost'],[807,'Zeraora','Electric',null],[808,'Meltan','Steel',null],[809,'Melmetal','Steel',null],[810,'Grookey','Grass',null],[811,'Thwackey','Grass',null],[812,'Rillaboom','Grass',null],[813,'Scorbunny','Fire',null],[814,'Raboot','Fire',null],[815,'Cinderace','Fire',null],[816,'Sobble','Water',null],[817,'Drizzile','Water',null],[818,'Inteleon','Water',null],[819,'Skwovet','Normal',null],[820,'Greedent','Normal',null],[821,'Rookidee','Flying',null],[822,'Corvisquire','Flying',null],[823,'Corviknight','Flying','Steel'],[824,'Blipbug','Bug',null],[825,'Dottler','Bug','Psychic'],[826,'Orbeetle','Bug','Psychic'],[827,'Nickit','Dark',null],[828,'Thievul','Dark',null],[829,'Gossifleur','Grass',null],[830,'Eldegoss','Grass',null],[831,'Wooloo','Normal',null],[832,'Dubwool','Normal',null],[833,'Chewtle','Water',null],[834,'Drednaw','Water','Rock'],[835,'Yamper','Electric',null],[836,'Boltund','Electric',null],[837,'Rolycoly','Rock',null],[838,'Carkol','Rock','Fire'],[839,'Coalossal','Rock','Fire'],[840,'Applin','Grass','Dragon'],[841,'Flapple','Grass','Dragon'],[842,'Appletun','Grass','Dragon'],[843,'Silicobra','Ground',null],[844,'Sandaconda','Ground',null],[845,'Cramorant','Flying','Water'],[846,'Arrokuda','Water',null],[847,'Barraskewda','Water',null],[848,'Toxel','Electric','Poison'],[849,'Toxtricity','Electric','Poison'],[850,'Sizzlipede','Fire','Bug'],[851,'Centiskorch','Fire','Bug'],[852,'Clobbopus','Fighting',null],[853,'Grapploct','Fighting','Water'],[854,'Sinistea','Ghost',null],[855,'Polteageist','Ghost',null],[856,'Hatenna','Psychic',null],[857,'Hattrem','Psychic',null],[858,'Hatterene','Psychic','Fairy'],[859,'Impidimp','Dark','Fairy'],[860,'Morgrem','Dark','Fairy'],[861,'Grimmsnarl','Dark','Fairy'],[862,'Obstagoon','Dark','Normal'],[863,'Perrserker','Steel',null],[864,'Cursola','Ghost',null],[865,'Sirfetch\'d','Fighting',null],[866,'Mr. Rime','Ice','Psychic'],[867,'Runerigus','Ground','Ghost'],[868,'Milcery','Fairy',null],[869,'Alcremie','Fairy',null],[870,'Falinks','Fighting',null],[871,'Pincurchin','Electric',null],[872,'Snom','Ice','Bug'],[873,'Frosmoth','Ice','Bug'],[874,'Stonjourner','Rock',null],[875,'Eiscue','Ice',null],[876,'Indeedee','Psychic','Normal'],[877,'Morpeko','Electric','Dark'],[878,'Cufant','Steel',null],[879,'Copperajah','Steel',null],[880,'Dracozolt','Electric','Dragon'],[881,'Arctozolt','Electric','Ice'],[882,'Dracovish','Water','Dragon'],[883,'Arctovish','Water','Ice'],[884,'Duraludon','Steel','Dragon'],[885,'Dreepy','Dragon','Ghost'],[886,'Drakloak','Dragon','Ghost'],[887,'Dragapult','Dragon','Ghost'],[888,'Zacian','Fairy',null],[889,'Zamazenta','Fighting',null],[890,'Eternatus','Poison','Dragon'],[891,'Kubfu','Fighting',null],[892,'Urshifu','Fighting','Dark'],[893,'Zarude','Dark','Grass'],[894,'Regieleki','Electric',null],[895,'Regidrago','Dragon',null],[896,'Glastrier','Ice',null],[897,'Spectrier','Ghost',null],[898,'Calyrex','Psychic','Grass'],[899,'Wyrdeer','Normal','Psychic'],[900,'Kleavor','Bug','Rock'],[901,'Ursaluna','Ground','Normal'],[902,'Basculegion','Water','Ghost'],[903,'Sneasler','Fighting','Poison'],[904,'Overqwil','Dark','Poison'],[905,'Enamorus','Fairy','Flying'],[906,'Sprigatito','Grass',null],[907,'Floragato','Grass',null],[908,'Meowscarada','Grass','Dark'],[909,'Fuecoco','Fire',null],[910,'Crocalor','Fire',null],[911,'Skeledirge','Fire','Ghost'],[912,'Quaxly','Water',null],[913,'Quaxwell','Water',null],[914,'Quaquaval','Water','Fighting'],[915,'Lechonk','Normal',null],[916,'Oinkologne','Normal',null],[917,'Tarountula','Bug',null],[918,'Spidops','Bug',null],[919,'Nymble','Bug',null],[920,'Lokix','Bug','Dark'],[921,'Pawmi','Electric',null],[922,'Pawmo','Electric','Fighting'],[923,'Pawmot','Electric','Fighting'],[924,'Tandemaus','Normal',null],[925,'Maushold','Normal',null],[926,'Fidough','Fairy',null],[927,'Dachsbun','Fairy',null],[928,'Smoliv','Grass','Normal'],[929,'Dolliv','Grass','Normal'],[930,'Arboliva','Grass','Normal'],[931,'Squawkabilly','Normal','Flying'],[932,'Nacli','Rock',null],[933,'Naclstack','Rock',null],[934,'Garganacl','Rock',null],[935,'Charcadet','Fire',null],[936,'Armarouge','Fire','Psychic'],[937,'Ceruledge','Fire','Ghost'],[938,'Tadbulb','Electric',null],[939,'Bellibolt','Electric',null],[940,'Wattrel','Electric','Flying'],[941,'Kilowattrel','Electric','Flying'],[942,'Maschiff','Dark',null],[943,'Mabosstiff','Dark',null],[944,'Shroodle','Poison','Normal'],[945,'Grafaiai','Poison','Normal'],[946,'Bramblin','Grass','Ghost'],[947,'Brambleghast','Grass','Ghost'],[948,'Toedscool','Ground','Grass'],[949,'Toedscruel','Ground','Grass'],[950,'Klawf','Rock',null],[951,'Capsakid','Grass',null],[952,'Scovillain','Grass','Fire'],[953,'Rellor','Bug',null],[954,'Rabsca','Bug','Psychic'],[955,'Flittle','Psychic',null],[956,'Espathra','Psychic',null],[957,'Tinkatink','Fairy','Steel'],[958,'Tinkatuff','Fairy','Steel'],[959,'Tinkaton','Fairy','Steel'],[960,'Wiglett','Water',null],[961,'Wugtrio','Water',null],[962,'Bombirdier','Flying','Dark'],[963,'Finizen','Water',null],[964,'Palafin','Water',null],[965,'Varoom','Steel','Poison'],[966,'Revavroom','Steel','Poison'],[967,'Cyclizar','Dragon','Normal'],[968,'Orthworm','Steel',null],[969,'Glimmet','Rock','Poison'],[970,'Glimmora','Rock','Poison'],[971,'Greavard','Ghost',null],[972,'Houndstone','Ghost',null],[973,'Flamigo','Flying','Fighting'],[974,'Cetoddle','Ice',null],[975,'Cetitan','Ice',null],[976,'Veluza','Water','Psychic'],[977,'Dondozo','Water',null],[978,'Tatsugiri','Dragon','Water'],[979,'Annihilape','Fighting','Ghost'],[980,'Clodsire','Poison','Ground'],[981,'Farigiraf','Normal','Psychic'],[982,'Dudunsparce','Normal',null],[983,'Kingambit','Dark','Steel'],[984,'Great Tusk','Ground','Fighting'],[985,'Scream Tail','Fairy','Psychic'],[986,'Brute Bonnet','Grass','Dark'],[987,'Flutter Mane','Ghost','Fairy'],[988,'Slither Wing','Bug','Fighting'],[989,'Sandy Shocks','Electric','Ground'],[990,'Iron Treads','Ground','Steel'],[991,'Iron Bundle','Ice','Water'],[992,'Iron Hands','Fighting','Electric'],[993,'Iron Jugulis','Dark','Flying'],[994,'Iron Moth','Fire','Poison'],[995,'Iron Thorns','Rock','Electric'],[996,'Frigibax','Dragon','Ice'],[997,'Arctibax','Dragon','Ice'],[998,'Baxcalibur','Dragon','Ice'],[999,'Gimmighoul','Ghost',null],[1000,'Gholdengo','Steel','Ghost'],[1001,'Wo-Chien','Dark','Grass'],[1002,'Chien-Pao','Dark','Ice'],[1003,'Ting-Lu','Dark','Ground'],[1004,'Chi-Yu','Dark','Fire'],[1005,'Roaring Moon','Dragon','Dark'],[1006,'Iron Valiant','Fairy','Fighting'],[1007,'Koraidon','Fighting','Dragon'],[1008,'Miraidon','Electric','Dragon'],[1009,'Walking Wake','Water','Dragon'],[1010,'Iron Leaves','Grass','Psychic'],[1011,'Dipplin','Grass','Dragon'],[1012,'Poltchageist','Grass','Ghost'],[1013,'Sinistcha','Grass','Ghost'],[1014,'Okidogi','Poison','Fighting'],[1015,'Munkidori','Poison','Psychic'],[1016,'Fezandipiti','Poison','Fairy'],[1017,'Ogerpon','Grass',null],[1018,'Archaludon','Steel','Dragon'],[1019,'Hydrapple','Grass','Dragon'],[1020,'Gouging Fire','Fire','Dragon'],[1021,'Raging Bolt','Electric','Dragon'],[1022,'Iron Boulder','Rock','Psychic'],[1023,'Iron Crown','Steel','Psychic'],[1024,'Terapagos','Normal',null],[1025,'Pecharunt','Poison','Ghost']
+];
+
+// ── BUILD DATA (Game8 Legends Z-A) ─────────────────────────────────────────
+// natures:[{nm,up,dn}], ab:{nm,ds}, mv:[{nm,tp,rl}], bt(battle tip), fm(farm tip)
+var EV_YIELD={
+  1:[[3,1]],
+  2:[[3,1],[4,1]],
+  3:[[3,2],[4,1]],
+  4:[[5,1]],
+  5:[[5,1]],
+  6:[[3,3]],
+  7:[[2,1]],
+  8:[[2,1],[4,1]],
+  9:[[4,3]],
+  10:[[5,1]],
+  11:[[2,1]],
+  12:[[0,1],[5,1]],
+  13:[[5,1]],
+  14:[[2,1]],
+  15:[[1,3]],
+  16:[[5,1]],
+  17:[[5,2]],
+  18:[[5,3]],
+  19:[[5,1]],
+  20:[[5,2]],
+  21:[[5,1]],
+  22:[[1,1],[5,1]],
+  23:[[5,1]],
+  24:[[1,2]],
+  25:[[5,2]],
+  26:[[5,3]],
+  27:[[2,1]],
+  28:[[2,2]],
+  29:[[5,1]],
+  30:[[4,1]],
+  31:[[0,1],[4,1]],
+  32:[[5,1]],
+  33:[[1,1]],
+  34:[[1,1],[5,1]],
+  35:[[0,1]],
+  36:[[0,2]],
+  37:[[5,1]],
+  38:[[5,3]],
+  39:[[0,1]],
+  40:[[0,2]],
+  41:[[5,1]],
+  42:[[5,2]],
+  43:[[3,1]],
+  44:[[3,1],[4,1]],
+  45:[[3,3]],
+  46:[[1,1]],
+  47:[[1,1]],
+  48:[[3,1]],
+  49:[[3,1]],
+  50:[[5,1]],
+  51:[[5,2]],
+  52:[[5,1]],
+  53:[[5,2]],
+  54:[[3,1]],
+  55:[[3,2]],
+  56:[[1,1]],
+  57:[[1,2]],
+  58:[[1,1]],
+  59:[[1,2]],
+  60:[[5,1]],
+  61:[[5,1]],
+  62:[[0,1],[5,1]],
+  63:[[5,1]],
+  64:[[5,2]],
+  65:[[3,3]],
+  66:[[1,1]],
+  67:[[1,2]],
+  68:[[1,3]],
+  69:[[3,1]],
+  70:[[3,1]],
+  71:[[3,2]],
+  72:[[4,1]],
+  73:[[4,2]],
+  74:[[2,1]],
+  75:[[2,2]],
+  76:[[2,3]],
+  77:[[5,1]],
+  78:[[5,2]],
+  79:[[0,1]],
+  80:[[2,1],[4,1]],
+  81:[[3,1]],
+  82:[[3,2]],
+  83:[[1,1]],
+  84:[[5,1]],
+  85:[[5,2]],
+  86:[[4,1]],
+  87:[[4,2]],
+  88:[[0,1]],
+  89:[[0,3]],
+  90:[[2,1]],
+  91:[[2,2]],
+  92:[[3,1]],
+  93:[[3,2]],
+  94:[[3,3]],
+  95:[[2,1]],
+  96:[[4,1]],
+  97:[[4,2]],
+  98:[[1,1]],
+  99:[[1,2]],
+  100:[[5,1]],
+  101:[[5,2]],
+  102:[[3,1]],
+  103:[[3,2]],
+  104:[[2,1]],
+  105:[[2,2]],
+  106:[[1,2]],
+  107:[[4,2]],
+  108:[[0,1]],
+  109:[[2,1]],
+  110:[[2,2]],
+  111:[[2,1]],
+  112:[[1,2]],
+  113:[[0,2]],
+  114:[[3,1]],
+  115:[[0,1]],
+  116:[[3,1]],
+  117:[[3,2]],
+  118:[[5,1]],
+  119:[[5,2]],
+  120:[[5,1]],
+  121:[[3,1],[4,1]],
+  122:[[4,1]],
+  123:[[1,1]],
+  124:[[3,1],[4,1]],
+  125:[[3,2]],
+  126:[[3,2]],
+  127:[[1,2]],
+  128:[[1,1],[5,1]],
+  129:[[5,1]],
+  130:[[1,2]],
+  131:[[0,1],[4,1]],
+  132:[[0,1]],
+  133:[[5,1]],
+  134:[[4,2]],
+  135:[[5,2]],
+  136:[[1,2]],
+  137:[[3,1],[4,1]],
+  138:[[2,1]],
+  139:[[2,2]],
+  140:[[2,1]],
+  141:[[1,2]],
+  142:[[1,1],[5,1]],
+  143:[[0,2]],
+  144:[[2,1],[4,1]],
+  145:[[3,3]],
+  146:[[3,3]],
+  147:[[5,1]],
+  148:[[5,2]],
+  149:[[1,3]],
+  150:[[3,3]],
+  151:[[0,1],[1,1],[5,1]],
+  152:[[3,1]],
+  153:[[3,1],[4,1]],
+  154:[[3,2]],
+  155:[[5,1]],
+  156:[[5,1]],
+  157:[[3,3]],
+  158:[[2,1]],
+  159:[[2,1]],
+  160:[[1,2]],
+  161:[[5,1]],
+  162:[[5,2]],
+  163:[[5,1]],
+  164:[[0,1],[4,1]],
+  165:[[5,1]],
+  166:[[4,2]],
+  167:[[1,1]],
+  168:[[1,2]],
+  169:[[5,3]],
+  170:[[5,1]],
+  171:[[0,2]],
+  172:[[5,1]],
+  173:[[0,1]],
+  174:[[0,1]],
+  175:[[0,1]],
+  176:[[3,1]],
+  177:[[5,1]],
+  178:[[3,1],[5,1]],
+  179:[[3,1]],
+  180:[[3,2]],
+  181:[[3,3]],
+  182:[[4,2]],
+  183:[[2,1]],
+  184:[[0,1],[4,1]],
+  185:[[2,1]],
+  186:[[4,2]],
+  187:[[5,1]],
+  188:[[5,2]],
+  189:[[5,3]],
+  190:[[5,1]],
+  191:[[3,1]],
+  192:[[3,2]],
+  193:[[5,1]],
+  194:[[0,1]],
+  195:[[0,2]],
+  196:[[3,2]],
+  197:[[4,2]],
+  198:[[5,2]],
+  199:[[3,1]],
+  200:[[3,2]],
+  201:[[3,1]],
+  202:[[0,2]],
+  203:[[5,1]],
+  204:[[2,1]],
+  205:[[2,2]],
+  206:[[0,1]],
+  207:[[5,1]],
+  208:[[2,3]],
+  209:[[1,1]],
+  210:[[1,2]],
+  211:[[5,1]],
+  212:[[1,2]],
+  213:[[2,1],[4,1]],
+  214:[[1,2]],
+  215:[[5,2]],
+  216:[[1,1]],
+  217:[[1,2]],
+  218:[[3,1]],
+  219:[[3,1],[2,1]],
+  220:[[0,1]],
+  221:[[0,1],[1,1]],
+  222:[[3,1]],
+  223:[[5,1]],
+  224:[[3,2]],
+  225:[[5,1]],
+  226:[[4,2]],
+  227:[[2,1]],
+  228:[[3,1]],
+  229:[[3,2]],
+  230:[[5,2]],
+  231:[[0,1]],
+  232:[[2,2]],
+  233:[[3,2]],
+  234:[[5,1]],
+  235:[[5,1]],
+  236:[[5,1]],
+  237:[[4,2]],
+  238:[[3,1],[4,1]],
+  239:[[3,2]],
+  240:[[3,2]],
+  241:[[0,2]],
+  242:[[0,3]],
+  243:[[5,3]],
+  244:[[0,1],[1,2]],
+  245:[[0,1],[4,2]],
+  246:[[5,1]],
+  247:[[5,1]],
+  248:[[4,3]],
+  249:[[2,3]],
+  250:[[0,1],[1,2]],
+  251:[[0,1],[3,1],[5,1]],
+  252:[[5,1]],
+  253:[[5,2]],
+  254:[[5,3]],
+  255:[[5,1]],
+  256:[[1,1]],
+  257:[[1,3]],
+  258:[[2,1]],
+  259:[[2,1]],
+  260:[[1,3]],
+  261:[[5,1]],
+  262:[[1,2]],
+  263:[[5,1]],
+  264:[[5,2]],
+  265:[[5,1]],
+  266:[[2,1]],
+  267:[[3,2]],
+  268:[[2,1]],
+  269:[[4,2]],
+  270:[[4,1]],
+  271:[[4,1],[3,1]],
+  272:[[4,2],[3,1]],
+  273:[[5,1]],
+  274:[[3,1],[5,1]],
+  275:[[3,2],[5,1]],
+  276:[[5,1]],
+  277:[[5,2]],
+  278:[[5,1]],
+  279:[[4,1]],
+  280:[[3,1]],
+  281:[[3,2]],
+  282:[[3,3]],
+  283:[[5,1]],
+  284:[[3,2]],
+  285:[[5,1]],
+  286:[[1,2]],
+  287:[[0,1]],
+  288:[[5,2]],
+  289:[[0,3]],
+  290:[[5,1]],
+  291:[[5,2]],
+  292:[[0,1]],
+  293:[[0,1]],
+  294:[[0,2]],
+  295:[[0,3]],
+  296:[[1,1]],
+  297:[[1,2]],
+  298:[[2,1]],
+  299:[[2,1]],
+  300:[[5,1]],
+  301:[[5,2]],
+  302:[[0,1],[4,1]],
+  303:[[1,1]],
+  304:[[2,1]],
+  305:[[2,2]],
+  306:[[2,3]],
+  307:[[5,1]],
+  308:[[5,2]],
+  309:[[5,1]],
+  310:[[5,2]],
+  311:[[3,1]],
+  312:[[4,1]],
+  313:[[5,1]],
+  314:[[3,1]],
+  315:[[3,1]],
+  316:[[0,1]],
+  317:[[0,2]],
+  318:[[1,1]],
+  319:[[1,2]],
+  320:[[0,2]],
+  321:[[0,3]],
+  322:[[3,1]],
+  323:[[3,1],[1,1]],
+  324:[[2,1]],
+  325:[[4,1]],
+  326:[[4,2]],
+  327:[[5,1]],
+  328:[[1,1]],
+  329:[[5,2]],
+  330:[[5,3]],
+  331:[[3,1]],
+  332:[[1,1],[3,1]],
+  333:[[5,1]],
+  334:[[3,2]],
+  335:[[1,2]],
+  336:[[3,2]],
+  337:[[3,1],[4,1]],
+  338:[[1,1],[2,1]],
+  339:[[5,1]],
+  340:[[0,2]],
+  341:[[1,1]],
+  342:[[1,2]],
+  343:[[5,1]],
+  344:[[2,1],[4,1]],
+  345:[[4,1]],
+  346:[[4,2]],
+  347:[[5,1]],
+  348:[[1,2]],
+  349:[[5,1]],
+  350:[[3,2]],
+  351:[[3,1]],
+  352:[[4,1]],
+  353:[[1,1]],
+  354:[[1,2]],
+  355:[[4,1]],
+  356:[[2,1],[4,1]],
+  357:[[0,2]],
+  358:[[3,1]],
+  359:[[1,2]],
+  360:[[0,1]],
+  361:[[2,1]],
+  362:[[2,1],[4,1]],
+  363:[[2,1]],
+  364:[[2,1],[4,1]],
+  365:[[0,1],[4,1]],
+  366:[[2,1]],
+  367:[[1,1]],
+  368:[[3,1]],
+  369:[[2,2]],
+  370:[[5,1]],
+  371:[[5,1]],
+  372:[[2,1]],
+  373:[[3,3]],
+  374:[[2,1]],
+  375:[[2,2]],
+  376:[[1,3]],
+  377:[[2,3]],
+  378:[[4,3]],
+  379:[[2,3]],
+  380:[[3,2]],
+  381:[[3,3]],
+  382:[[3,3]],
+  383:[[1,3]],
+  384:[[1,3]],
+  385:[[0,1],[3,1]],
+  386:[[1,1],[3,2]],
+  387:[[3,1]],
+  388:[[3,1]],
+  389:[[0,1],[4,1]],
+  390:[[5,1]],
+  391:[[5,1]],
+  392:[[1,3]],
+  393:[[5,1]],
+  394:[[5,1]],
+  395:[[3,3]],
+  396:[[5,1]],
+  397:[[5,2]],
+  398:[[1,3]],
+  399:[[0,1]],
+  400:[[0,1],[1,1]],
+  401:[[5,1]],
+  402:[[1,1],[5,1]],
+  403:[[5,1]],
+  404:[[5,2]],
+  405:[[1,3]],
+  406:[[3,1]],
+  407:[[3,2],[4,1]],
+  408:[[1,1]],
+  409:[[1,2]],
+  410:[[2,1]],
+  411:[[2,2]],
+  412:[[5,1]],
+  413:[[4,2]],
+  414:[[3,1]],
+  415:[[5,1]],
+  416:[[4,2],[2,1]],
+  417:[[4,1]],
+  418:[[5,1]],
+  419:[[5,2]],
+  420:[[3,1]],
+  421:[[3,2]],
+  422:[[0,1]],
+  423:[[0,1],[4,1]],
+  424:[[5,2]],
+  425:[[5,1]],
+  426:[[0,2]],
+  427:[[5,1]],
+  428:[[5,2]],
+  429:[[3,3]],
+  430:[[1,2]],
+  431:[[5,1]],
+  432:[[5,2]],
+  433:[[3,1]],
+  434:[[5,1]],
+  435:[[3,1],[5,1]],
+  436:[[2,1],[4,1]],
+  437:[[2,2],[4,2]],
+  438:[[2,1]],
+  439:[[2,1],[4,1]],
+  440:[[0,1]],
+  441:[[3,1]],
+  442:[[2,1],[4,1]],
+  443:[[5,1]],
+  444:[[5,2]],
+  445:[[1,3]],
+  446:[[0,1]],
+  447:[[5,1]],
+  448:[[1,2],[5,1]],
+  449:[[0,1]],
+  450:[[0,1],[1,2]],
+  451:[[2,1]],
+  452:[[1,2]],
+  453:[[5,1]],
+  454:[[1,2]],
+  455:[[3,1]],
+  456:[[5,1]],
+  457:[[4,1]],
+  458:[[4,1]],
+  459:[[3,1]],
+  460:[[3,2]],
+  461:[[1,2]],
+  462:[[3,3]],
+  463:[[0,2]],
+  464:[[1,3]],
+  465:[[3,3]],
+  466:[[3,2]],
+  467:[[3,2]],
+  468:[[4,2],[5,1]],
+  469:[[3,2]],
+  470:[[2,2]],
+  471:[[3,2]],
+  472:[[2,1],[5,1]],
+  473:[[1,2]],
+  474:[[3,3]],
+  475:[[1,2]],
+  476:[[2,1],[4,2]],
+  477:[[2,2],[4,1]],
+  478:[[4,1],[5,1]],
+  479:[[3,2]],
+  480:[[4,2]],
+  481:[[1,1],[5,1]],
+  482:[[1,1],[5,1]],
+  483:[[3,3]],
+  484:[[3,3]],
+  485:[[3,3]],
+  486:[[1,3]],
+  487:[[0,3]],
+  488:[[4,2]],
+  489:[[0,1]],
+  490:[[0,1]],
+  491:[[3,1],[5,1]],
+  492:[[5,3]],
+  493:[[0,3]],
+  494:[[0,3]],
+  495:[[5,1]],
+  496:[[5,2]],
+  497:[[5,3]],
+  498:[[5,1]],
+  499:[[5,1]],
+  500:[[0,1],[1,2]],
+  501:[[5,1]],
+  502:[[5,1]],
+  503:[[1,2]],
+  504:[[5,1]],
+  505:[[5,2]],
+  506:[[5,1]],
+  507:[[1,1],[5,1]],
+  508:[[1,3]],
+  509:[[5,1]],
+  510:[[5,2]],
+  511:[[3,1]],
+  512:[[3,2]],
+  513:[[3,1]],
+  514:[[3,2]],
+  515:[[4,1]],
+  516:[[4,2]],
+  517:[[0,1]],
+  518:[[0,2]],
+  519:[[5,1]],
+  520:[[5,2]],
+  521:[[1,2]],
+  522:[[5,1]],
+  523:[[5,2]],
+  524:[[2,1]],
+  525:[[2,2]],
+  526:[[1,3]],
+  527:[[3,1]],
+  528:[[5,2]],
+  529:[[1,1]],
+  530:[[1,2]],
+  531:[[4,2]],
+  532:[[1,1]],
+  533:[[1,2]],
+  534:[[1,3]],
+  535:[[5,1]],
+  536:[[0,1],[5,1]],
+  537:[[0,2],[5,1]],
+  538:[[0,2]],
+  539:[[1,2]],
+  540:[[3,1]],
+  541:[[2,1]],
+  542:[[1,2]],
+  543:[[5,1]],
+  544:[[2,1]],
+  545:[[1,1],[5,1]],
+  546:[[5,1]],
+  547:[[5,2]],
+  548:[[3,1]],
+  549:[[3,2]],
+  550:[[1,2]],
+  551:[[5,1]],
+  552:[[5,2]],
+  553:[[1,2]],
+  554:[[1,1]],
+  555:[[1,2]],
+  556:[[3,2]],
+  557:[[2,1]],
+  558:[[2,2]],
+  559:[[5,1]],
+  560:[[2,2]],
+  561:[[3,1],[5,1]],
+  562:[[4,1]],
+  563:[[2,3]],
+  564:[[2,1]],
+  565:[[2,2]],
+  566:[[5,1]],
+  567:[[1,2]],
+  568:[[0,1]],
+  569:[[0,2]],
+  570:[[5,1]],
+  571:[[1,2]],
+  572:[[5,1]],
+  573:[[5,2]],
+  574:[[3,1]],
+  575:[[3,2]],
+  576:[[3,3]],
+  577:[[3,1]],
+  578:[[3,2]],
+  579:[[0,1],[3,2]],
+  580:[[5,1]],
+  581:[[1,2]],
+  582:[[3,1]],
+  583:[[3,2]],
+  584:[[3,2],[5,1]],
+  585:[[5,1]],
+  586:[[5,2]],
+  587:[[3,1],[5,1]],
+  588:[[1,1]],
+  589:[[1,2]],
+  590:[[0,1]],
+  591:[[0,2]],
+  592:[[4,1]],
+  593:[[0,1],[4,1]],
+  594:[[0,2]],
+  595:[[5,1]],
+  596:[[5,2]],
+  597:[[2,1]],
+  598:[[2,3]],
+  599:[[2,1]],
+  600:[[2,2]],
+  601:[[2,3]],
+  602:[[3,1]],
+  603:[[3,1]],
+  604:[[3,2]],
+  605:[[3,1]],
+  606:[[3,2]],
+  607:[[3,1]],
+  608:[[3,2]],
+  609:[[3,3]],
+  610:[[5,1]],
+  611:[[5,2]],
+  612:[[1,3]],
+  613:[[4,1]],
+  614:[[1,2]],
+  615:[[4,2]],
+  616:[[2,1]],
+  617:[[5,2]],
+  618:[[0,2]],
+  619:[[5,1]],
+  620:[[5,2]],
+  621:[[1,2]],
+  622:[[5,1]],
+  623:[[0,1],[1,2]],
+  624:[[1,1]],
+  625:[[1,3]],
+  626:[[0,2]],
+  627:[[5,1]],
+  628:[[1,2]],
+  629:[[5,1]],
+  630:[[4,2]],
+  631:[[3,1]],
+  632:[[2,1],[5,1]],
+  633:[[3,1]],
+  634:[[3,2]],
+  635:[[3,3]],
+  636:[[5,1]],
+  637:[[3,3]],
+  638:[[2,3]],
+  639:[[1,3]],
+  640:[[4,3]],
+  641:[[5,2]],
+  642:[[3,2]],
+  643:[[3,3]],
+  644:[[1,3]],
+  645:[[1,2],[5,1]],
+  646:[[1,3]],
+  647:[[3,3]],
+  648:[[3,3]],
+  649:[[1,1],[3,1],[5,1]],
+  650:[[2,1]],
+  651:[[2,2]],
+  652:[[2,3]],
+  653:[[3,1]],
+  654:[[3,2]],
+  655:[[3,3]],
+  656:[[5,1]],
+  657:[[5,2]],
+  658:[[3,3]],
+  659:[[5,1]],
+  660:[[1,3]],
+  661:[[5,1]],
+  662:[[5,2]],
+  663:[[5,3]],
+  664:[[5,1]],
+  665:[[5,1]],
+  666:[[3,1],[5,1]],
+  667:[[3,1]],
+  668:[[3,2]],
+  669:[[3,1]],
+  670:[[3,1],[4,1]],
+  671:[[3,2],[4,1]],
+  672:[[5,1]],
+  673:[[1,2]],
+  674:[[1,1]],
+  675:[[1,2]],
+  676:[[2,1],[4,1]],
+  677:[[3,1]],
+  678:[[3,2]],
+  679:[[2,1]],
+  680:[[2,2]],
+  681:[[2,1],[4,1]],
+  682:[[4,1]],
+  683:[[4,2]],
+  684:[[3,1]],
+  685:[[1,1]],
+  686:[[5,1]],
+  687:[[5,2]],
+  688:[[2,1]],
+  689:[[2,2]],
+  690:[[4,1]],
+  691:[[4,3]],
+  692:[[3,1]],
+  693:[[3,2]],
+  694:[[5,1]],
+  695:[[3,2]],
+  696:[[2,1]],
+  697:[[1,2]],
+  698:[[5,1]],
+  699:[[3,2]],
+  700:[[3,2]],
+  701:[[1,2],[5,1]],
+  702:[[3,1],[5,1]],
+  703:[[2,1],[4,1]],
+  704:[[5,1]],
+  705:[[5,2]],
+  706:[[3,2],[4,1]],
+  707:[[2,1],[4,1]],
+  708:[[1,1]],
+  709:[[1,2]],
+  710:[[5,1]],
+  711:[[5,2]],
+  712:[[2,1]],
+  713:[[2,3]],
+  714:[[5,1]],
+  715:[[5,3]],
+  716:[[0,3]],
+  717:[[0,1],[5,2]],
+  718:[[0,3]],
+  719:[[2,1],[4,1]],
+  720:[[3,1],[4,2]],
+  721:[[3,1],[5,2]],
+  722:[[5,1]],
+  723:[[5,1]],
+  724:[[1,2],[5,1]],
+  725:[[5,1]],
+  726:[[5,1]],
+  727:[[1,2]],
+  728:[[5,1]],
+  729:[[5,1]],
+  730:[[3,2],[4,1]],
+  731:[[5,1]],
+  732:[[5,2]],
+  733:[[1,2]],
+  734:[[5,1]],
+  735:[[5,2]],
+  736:[[5,1]],
+  737:[[2,2]],
+  738:[[3,3]],
+  739:[[1,1]],
+  740:[[1,2]],
+  741:[[3,2]],
+  742:[[5,1]],
+  743:[[3,2]],
+  744:[[1,1]],
+  745:[[1,2]],
+  746:[[0,1]],
+  747:[[2,1]],
+  748:[[2,3]],
+  749:[[1,1]],
+  750:[[1,2]],
+  751:[[4,1]],
+  752:[[4,2]],
+  753:[[3,1]],
+  754:[[1,2]],
+  755:[[3,1]],
+  756:[[3,2]],
+  757:[[3,1]],
+  758:[[3,2]],
+  759:[[0,1]],
+  760:[[0,1],[1,1]],
+  761:[[5,1]],
+  762:[[5,2]],
+  763:[[1,2]],
+  764:[[3,2]],
+  765:[[0,1],[4,1]],
+  766:[[1,2]],
+  767:[[5,1]],
+  768:[[2,2]],
+  769:[[4,1]],
+  770:[[2,2]],
+  771:[[4,2]],
+  772:[[0,1],[1,1]],
+  773:[[0,2],[1,1]],
+  774:[[2,1],[4,1]],
+  775:[[1,2]],
+  776:[[2,2]],
+  777:[[5,1]],
+  778:[[3,1],[4,1]],
+  779:[[3,1],[5,1]],
+  780:[[3,2]],
+  781:[[3,2]],
+  782:[[5,1]],
+  783:[[2,1],[5,1]],
+  784:[[1,3]],
+  785:[[5,3]],
+  786:[[3,2],[4,1]],
+  787:[[1,1],[2,2]],
+  788:[[4,2]],
+  789:[[5,1]],
+  790:[[2,2],[4,2]],
+  791:[[3,3]],
+  792:[[3,3]],
+  793:[[4,1],[3,1]],
+  794:[[1,2],[5,1]],
+  795:[[1,2],[5,1]],
+  796:[[3,3]],
+  797:[[0,1],[2,1],[4,1]],
+  798:[[1,3]],
+  799:[[0,3]],
+  800:[[3,3]],
+  801:[[3,3]],
+  802:[[1,2]],
+  803:[[3,1]],
+  804:[[3,2]],
+  805:[[2,2],[4,2]],
+  806:[[3,3]],
+  807:[[5,3]],
+  808:[[3,1]],
+  809:[[1,3],[4,3]],
+  810:[[2,1]],
+  811:[[2,2]],
+  812:[[1,3]],
+  813:[[5,1]],
+  814:[[5,2]],
+  815:[[5,3]],
+  816:[[5,1]],
+  817:[[5,2]],
+  818:[[3,3]],
+  819:[[0,1]],
+  820:[[0,2]],
+  821:[[5,1]],
+  822:[[5,2]],
+  823:[[2,3]],
+  824:[[3,1]],
+  825:[[4,1]],
+  826:[[3,1],[4,1]],
+  827:[[5,1]],
+  828:[[5,2]],
+  829:[[4,1]],
+  830:[[4,2]],
+  831:[[0,1]],
+  832:[[2,2]],
+  833:[[0,1]],
+  834:[[1,2]],
+  835:[[5,1]],
+  836:[[5,2]],
+  837:[[2,1]],
+  838:[[2,2]],
+  839:[[2,3]],
+  840:[[2,1]],
+  841:[[1,2]],
+  842:[[3,2]],
+  843:[[2,1]],
+  844:[[2,2]],
+  845:[[3,1]],
+  846:[[5,1]],
+  847:[[5,2]],
+  848:[[5,1]],
+  849:[[3,2]],
+  850:[[5,1]],
+  851:[[5,2]],
+  852:[[1,1]],
+  853:[[1,2]],
+  854:[[3,1]],
+  855:[[3,2]],
+  856:[[3,1]],
+  857:[[3,2]],
+  858:[[3,3]],
+  859:[[3,1]],
+  860:[[3,2]],
+  861:[[1,2],[3,1]],
+  862:[[2,2]],
+  863:[[2,2]],
+  864:[[4,3]],
+  865:[[1,3]],
+  866:[[3,1],[4,1]],
+  867:[[2,3]],
+  868:[[3,1]],
+  869:[[3,2]],
+  870:[[1,2]],
+  871:[[1,2]],
+  872:[[3,1]],
+  873:[[4,2]],
+  874:[[2,3]],
+  875:[[2,2]],
+  876:[[3,1],[4,1]],
+  877:[[3,1],[5,1]],
+  878:[[2,1]],
+  879:[[1,2]],
+  880:[[3,1],[5,1]],
+  881:[[3,1],[5,1]],
+  882:[[3,1],[5,1]],
+  883:[[3,1],[5,1]],
+  884:[[3,1]],
+  885:[[5,1]],
+  886:[[5,2]],
+  887:[[5,3]],
+  888:[[1,3]],
+  889:[[2,3]],
+  890:[[3,3]],
+  891:[[1,2]],
+  892:[[1,3]],
+  893:[[5,3]],
+  894:[[5,3]],
+  895:[[5,3]],
+  896:[[1,3]],
+  897:[[3,3]],
+  898:[[3,2]],
+  899:[[0,1],[3,1]],
+  900:[[1,2]],
+  901:[[1,3]],
+  902:[[1,1],[3,1]],
+  903:[[5,3]],
+  904:[[1,2]],
+  905:[[3,3]],
+  906:[[5,1]],
+  907:[[5,2]],
+  908:[[5,3]],
+  909:[[5,1]],
+  910:[[5,1]],
+  911:[[0,1],[3,1]],
+  912:[[5,1]],
+  913:[[5,2]],
+  914:[[1,3]],
+  915:[[5,1]],
+  916:[[0,2]],
+  917:[[5,1]],
+  918:[[5,2]],
+  919:[[5,1]],
+  920:[[1,2]],
+  921:[[5,1]],
+  922:[[5,2]],
+  923:[[1,2]],
+  924:[[5,1]],
+  925:[[5,1]],
+  926:[[2,1]],
+  927:[[2,2]],
+  928:[[4,1]],
+  929:[[4,2]],
+  930:[[3,2]],
+  931:[[5,1]],
+  932:[[2,1]],
+  933:[[2,2]],
+  934:[[2,3]],
+  935:[[5,1]],
+  936:[[3,2]],
+  937:[[1,2]],
+  938:[[5,1]],
+  939:[[3,2]],
+  940:[[5,1]],
+  941:[[3,2]],
+  942:[[5,1]],
+  943:[[1,2]],
+  944:[[5,1]],
+  945:[[5,2]],
+  946:[[5,1]],
+  947:[[1,2]],
+  948:[[4,1]],
+  949:[[4,2]],
+  950:[[1,2]],
+  951:[[5,1]],
+  952:[[1,2]],
+  953:[[5,1]],
+  954:[[3,2]],
+  955:[[5,1]],
+  956:[[3,2]],
+  957:[[4,1]],
+  958:[[4,1],[2,1]],
+  959:[[2,2]],
+  960:[[5,1]],
+  961:[[5,2]],
+  962:[[1,2]],
+  963:[[5,1]],
+  964:[[1,3]],
+  965:[[2,1]],
+  966:[[2,2]],
+  967:[[5,1]],
+  968:[[2,3]],
+  969:[[3,1]],
+  970:[[3,3]],
+  971:[[5,1]],
+  972:[[5,2]],
+  973:[[5,2]],
+  974:[[5,1]],
+  975:[[0,2]],
+  976:[[3,2]],
+  977:[[0,3]],
+  978:[[3,1]],
+  979:[[0,2]],
+  980:[[0,2]],
+  981:[[3,2]],
+  982:[[0,2]],
+  983:[[1,3]],
+  984:[[1,2],[5,1]],
+  985:[[5,2],[4,1]],
+  986:[[1,2]],
+  987:[[3,2],[4,2]],
+  988:[[1,2]],
+  989:[[5,2]],
+  990:[[2,2],[5,1]],
+  991:[[3,2],[5,1]],
+  992:[[0,2],[1,1]],
+  993:[[5,2]],
+  994:[[3,3]],
+  995:[[1,2],[5,1]],
+  996:[[5,1]],
+  997:[[5,2]],
+  998:[[1,3]],
+  999:[[3,1]],
+  1000:[[3,3]],
+  1001:[[4,3]],
+  1002:[[5,2]],
+  1003:[[0,3]],
+  1004:[[3,3]],
+  1005:[[1,3]],
+  1006:[[1,2],[5,1]],
+  1007:[[1,3]],
+  1008:[[3,3]],
+  1009:[[3,2],[5,1]],
+  1010:[[3,3]],
+  1011:[[3,2]],
+  1012:[[3,1]],
+  1013:[[3,2]],
+  1014:[[1,2]],
+  1015:[[3,2]],
+  1016:[[4,2]],
+  1017:[[1,2]],
+  1018:[[3,2]],
+  1019:[[3,3]],
+  1020:[[3,2],[5,1]],
+  1021:[[3,2],[5,1]],
+  1022:[[1,1],[2,1],[3,1]],
+  1023:[[1,1],[2,1],[3,1]],
+  1024:[[3,2]],
+  1025:[[2,3]]
+};
+
+var BASE_STATS={
+  1:[45,49,49,65,65,45,318],
+  2:[60,62,63,80,80,60,405],
+  3:[80,82,83,100,100,80,525],
+  4:[39,52,43,60,50,65,309],
+  5:[58,64,58,80,65,80,405],
+  6:[78,84,78,109,85,100,534],
+  7:[44,48,65,50,64,43,314],
+  8:[59,63,80,65,80,58,405],
+  9:[79,83,100,85,105,78,530],
+  10:[45,30,35,20,20,45,195],
+  11:[50,20,55,25,25,30,205],
+  12:[60,45,50,90,80,70,395],
+  13:[40,35,30,20,20,35,180],
+  14:[45,25,50,25,25,35,205],
+  15:[65,150,40,15,20,145,435],
+  16:[40,45,40,35,35,56,251],
+  17:[63,60,55,50,50,71,349],
+  18:[83,80,75,70,70,101,479],
+  19:[30,56,35,25,35,72,253],
+  20:[55,81,60,50,70,97,413],
+  21:[40,60,30,31,31,70,262],
+  22:[65,90,65,61,61,100,442],
+  23:[35,60,44,40,54,55,288],
+  24:[60,95,69,65,79,80,448],
+  25:[35,55,40,50,50,90,320],
+  26:[60,90,55,90,80,110,485],
+  27:[50,75,85,20,30,40,300],
+  28:[75,100,110,45,55,65,450],
+  29:[55,47,52,40,40,41,275],
+  30:[70,62,67,55,55,56,365],
+  31:[90,92,87,75,85,76,505],
+  32:[46,57,40,40,40,50,273],
+  33:[61,72,57,55,55,65,365],
+  34:[81,102,77,85,75,85,505],
+  35:[70,45,48,60,65,35,323],
+  36:[95,70,73,95,90,60,483],
+  37:[38,41,40,50,65,65,299],
+  38:[73,76,75,81,100,100,505],
+  39:[115,45,20,45,25,20,270],
+  40:[140,70,45,85,50,45,435],
+  41:[40,45,35,30,40,55,245],
+  42:[75,80,70,65,75,90,455],
+  43:[45,50,55,75,65,30,320],
+  44:[60,65,70,85,75,40,395],
+  45:[75,80,85,110,90,50,490],
+  46:[35,70,55,45,55,25,285],
+  47:[60,95,80,60,80,30,405],
+  48:[60,55,50,40,55,45,305],
+  49:[70,65,60,90,75,90,450],
+  50:[10,55,25,35,45,95,265],
+  51:[35,100,60,70,70,120,455],
+  52:[40,45,35,40,40,90,290],
+  53:[65,70,60,65,65,115,440],
+  54:[50,52,48,65,50,55,320],
+  55:[80,82,78,95,80,85,500],
+  56:[40,80,35,35,45,70,305],
+  57:[65,105,60,60,70,95,455],
+  58:[55,70,45,70,50,60,350],
+  59:[90,110,80,100,80,95,555],
+  60:[40,50,40,40,40,90,300],
+  61:[65,65,65,50,50,90,385],
+  62:[90,95,95,70,90,70,510],
+  63:[25,20,15,105,55,90,310],
+  64:[40,35,30,120,70,105,400],
+  65:[55,50,45,135,95,120,500],
+  66:[70,80,50,35,35,35,305],
+  67:[80,100,70,50,60,45,405],
+  68:[90,130,80,65,85,55,505],
+  69:[50,75,35,70,30,40,300],
+  70:[65,90,50,85,45,55,390],
+  71:[80,105,65,100,70,70,490],
+  72:[40,40,35,50,100,70,335],
+  73:[80,70,65,80,120,100,515],
+  74:[40,80,100,30,30,20,300],
+  75:[55,95,115,45,45,35,390],
+  76:[80,120,130,55,65,45,495],
+  77:[50,85,55,65,65,90,410],
+  78:[65,100,70,80,80,105,500],
+  79:[90,65,65,40,40,15,315],
+  80:[95,75,110,100,80,30,490],
+  81:[25,35,70,95,55,45,325],
+  82:[50,60,95,120,70,70,465],
+  83:[52,90,55,58,62,60,377],
+  84:[35,85,45,35,35,75,310],
+  85:[60,110,70,60,60,100,460],
+  86:[65,45,55,45,70,45,325],
+  87:[90,70,80,70,95,70,475],
+  88:[80,80,50,40,50,25,325],
+  89:[105,105,75,65,100,50,500],
+  90:[30,65,100,45,25,40,305],
+  91:[50,95,180,85,45,70,525],
+  92:[30,35,30,100,35,80,310],
+  93:[45,50,45,115,55,95,405],
+  94:[60,65,60,130,75,110,500],
+  95:[35,45,160,30,45,70,385],
+  96:[60,48,45,43,90,42,328],
+  97:[85,73,70,73,115,67,483],
+  98:[30,105,90,25,25,50,325],
+  99:[55,130,115,50,50,75,475],
+  100:[40,30,50,55,55,100,330],
+  101:[60,50,70,80,80,140,480],
+  102:[60,40,80,60,45,40,325],
+  103:[95,95,85,125,75,55,530],
+  104:[50,50,95,40,50,35,320],
+  105:[60,80,110,50,80,45,425],
+  106:[50,120,53,35,110,87,455],
+  107:[50,105,79,35,110,76,455],
+  108:[90,55,75,60,75,30,385],
+  109:[40,65,95,60,45,35,340],
+  110:[65,90,120,85,70,60,490],
+  111:[80,85,95,30,30,25,345],
+  112:[105,130,120,45,45,40,485],
+  113:[250,5,5,35,105,50,450],
+  114:[65,55,115,100,40,60,435],
+  115:[105,95,80,40,80,90,490],
+  116:[30,70,70,70,25,60,325],
+  117:[55,65,95,95,45,85,440],
+  118:[45,67,60,35,50,63,320],
+  119:[80,92,65,65,80,68,450],
+  120:[30,45,55,70,55,85,340],
+  121:[60,75,85,100,85,115,520],
+  122:[40,45,65,100,120,90,460],
+  123:[70,110,80,55,80,105,500],
+  124:[65,50,35,115,95,95,455],
+  125:[65,83,57,95,85,105,490],
+  126:[65,95,57,100,85,93,495],
+  127:[65,125,100,55,70,85,500],
+  128:[75,100,95,40,70,110,490],
+  129:[20,10,55,15,20,80,200],
+  130:[95,125,79,60,100,81,540],
+  131:[130,85,80,85,95,60,535],
+  132:[48,48,48,48,48,48,288],
+  133:[55,55,50,45,65,55,325],
+  134:[130,65,60,110,95,65,525],
+  135:[65,65,60,110,95,130,525],
+  136:[65,130,60,95,110,65,525],
+  137:[65,60,70,75,70,40,380],
+  138:[35,40,100,90,55,35,355],
+  139:[70,60,125,115,70,55,495],
+  140:[30,80,90,55,45,55,355],
+  141:[60,115,105,65,70,80,495],
+  142:[80,105,65,60,75,130,515],
+  143:[160,110,65,65,110,30,540],
+  144:[90,85,100,95,125,85,580],
+  145:[90,90,85,125,90,100,580],
+  146:[90,100,90,125,85,90,580],
+  147:[41,64,45,50,50,50,300],
+  148:[61,84,65,70,70,70,420],
+  149:[91,134,95,100,100,80,600],
+  150:[106,110,90,154,90,130,680],
+  151:[100,100,100,100,100,100,600],
+  152:[45,49,65,49,65,45,318],
+  153:[60,62,80,63,80,60,405],
+  154:[80,82,100,83,100,80,525],
+  155:[39,52,43,60,50,65,309],
+  156:[58,64,58,80,65,80,405],
+  157:[78,84,78,109,85,100,534],
+  158:[50,65,64,44,48,43,314],
+  159:[65,80,80,59,63,58,405],
+  160:[85,105,100,79,83,78,530],
+  161:[35,46,34,35,45,20,215],
+  162:[85,76,64,45,55,90,415],
+  163:[60,30,30,36,56,50,262],
+  164:[100,50,50,76,96,70,442],
+  165:[40,20,30,40,80,55,265],
+  166:[55,35,50,55,110,85,390],
+  167:[40,60,40,40,40,30,250],
+  168:[70,90,70,60,60,40,390],
+  169:[85,90,80,70,80,130,535],
+  170:[75,38,38,56,56,67,330],
+  171:[125,58,58,76,76,67,460],
+  172:[20,40,15,35,35,60,205],
+  173:[50,25,28,45,55,15,218],
+  174:[90,30,15,40,20,15,210],
+  175:[35,20,65,40,65,20,245],
+  176:[55,40,85,80,105,40,405],
+  177:[40,50,45,70,45,70,320],
+  178:[65,75,70,95,70,95,470],
+  179:[55,40,40,65,45,35,280],
+  180:[70,55,55,80,60,45,365],
+  181:[90,75,75,115,90,55,500],
+  182:[75,80,95,90,100,50,490],
+  183:[70,20,50,20,50,40,250],
+  184:[100,50,80,60,80,50,420],
+  185:[70,100,115,30,65,30,410],
+  186:[90,75,75,90,100,70,500],
+  187:[35,35,40,35,55,50,250],
+  188:[55,45,50,45,65,80,340],
+  189:[100,55,70,55,85,110,475],
+  190:[55,70,55,40,55,85,360],
+  191:[30,30,30,30,30,30,180],
+  192:[75,75,55,105,85,30,425],
+  193:[65,75,45,62,45,95,387],
+  194:[55,45,45,25,25,15,210],
+  195:[95,85,85,65,65,35,430],
+  196:[65,65,60,130,95,110,525],
+  197:[95,65,110,60,130,65,525],
+  198:[60,85,42,85,42,91,405],
+  199:[95,75,80,100,110,30,490],
+  200:[60,60,60,85,85,85,435],
+  201:[48,72,48,72,48,48,336],
+  202:[190,33,58,33,58,33,405],
+  203:[60,80,65,65,75,90,435],
+  204:[50,65,90,35,35,15,290],
+  205:[75,90,140,60,60,40,465],
+  206:[100,70,70,65,65,45,415],
+  207:[65,75,105,47,75,85,452],
+  208:[75,85,200,55,65,30,510],
+  209:[60,80,50,25,35,30,280],
+  210:[90,120,75,45,55,45,430],
+  211:[65,95,85,55,55,85,440],
+  212:[70,130,100,55,80,65,500],
+  213:[20,10,230,10,230,5,505],
+  214:[80,125,75,40,95,85,500],
+  215:[55,95,55,35,75,115,430],
+  216:[60,80,50,50,50,40,330],
+  217:[90,130,75,75,75,55,500],
+  218:[40,40,40,70,40,20,250],
+  219:[50,50,120,80,80,30,410],
+  220:[50,50,40,30,30,25,225],
+  221:[100,100,80,60,60,50,450],
+  222:[55,55,85,65,85,35,380],
+  223:[35,65,35,65,35,65,300],
+  224:[75,105,75,105,75,45,480],
+  225:[45,55,45,65,45,75,330],
+  226:[65,40,70,80,140,70,465],
+  227:[65,80,140,40,70,70,465],
+  228:[45,60,30,80,50,65,330],
+  229:[75,90,50,110,80,95,500],
+  230:[75,95,95,95,95,85,540],
+  231:[90,60,60,40,40,40,330],
+  232:[90,120,120,60,60,50,500],
+  233:[85,80,90,105,95,60,515],
+  234:[73,95,62,67,67,85,449],
+  235:[55,20,35,20,45,75,250],
+  236:[35,35,35,35,35,35,210],
+  237:[50,95,95,35,110,70,455],
+  238:[45,30,15,85,65,65,305],
+  239:[45,63,37,65,55,95,360],
+  240:[45,75,37,70,55,83,365],
+  241:[100,100,100,40,40,30,410],
+  242:[255,10,10,75,135,55,540],
+  243:[90,85,75,115,100,115,580],
+  244:[115,115,85,90,75,100,580],
+  245:[100,75,115,90,115,85,580],
+  246:[50,64,50,45,50,41,300],
+  247:[70,84,70,65,70,51,410],
+  248:[100,134,110,95,100,61,600],
+  249:[106,90,130,110,154,110,700],
+  250:[106,130,90,110,154,90,680],
+  251:[100,100,100,100,100,100,600],
+  252:[40,45,35,65,55,70,310],
+  253:[50,65,45,85,65,95,405],
+  254:[70,85,65,105,85,120,530],
+  255:[45,60,40,70,50,45,310],
+  256:[60,85,60,85,60,55,405],
+  257:[80,120,70,110,70,80,530],
+  258:[50,70,50,50,50,40,310],
+  259:[70,85,70,60,60,50,395],
+  260:[100,110,90,85,90,60,535],
+  261:[35,55,35,30,30,35,220],
+  262:[70,90,70,60,60,70,420],
+  263:[38,36,38,32,32,57,233],
+  264:[78,71,61,69,69,100,448],
+  265:[45,45,35,20,30,20,195],
+  266:[50,35,55,25,25,15,205],
+  267:[60,70,50,100,50,65,395],
+  268:[50,35,55,25,25,15,205],
+  269:[60,70,50,65,65,65,375],
+  270:[40,30,30,40,50,30,220],
+  271:[60,50,50,60,70,50,340],
+  272:[80,70,70,90,100,70,480],
+  273:[40,40,50,30,30,30,220],
+  274:[70,70,40,60,40,60,340],
+  275:[90,100,60,90,60,80,480],
+  276:[40,55,30,30,30,85,270],
+  277:[60,85,60,50,50,125,430],
+  278:[40,30,30,55,30,85,270],
+  279:[60,50,100,95,70,65,440],
+  280:[28,25,25,45,35,40,198],
+  281:[38,35,35,65,55,50,278],
+  282:[68,65,65,125,115,80,518],
+  283:[40,30,32,50,52,65,269],
+  284:[60,60,62,80,82,60,404],
+  285:[60,40,60,40,60,35,295],
+  286:[60,130,80,60,60,70,460],
+  287:[60,60,60,35,35,30,280],
+  288:[80,80,80,55,55,90,440],
+  289:[150,160,100,95,65,100,670],
+  290:[31,45,90,30,30,40,266],
+  291:[61,90,45,50,50,160,456],
+  292:[1,90,45,30,30,40,236],
+  293:[64,51,23,51,23,28,240],
+  294:[84,71,43,71,43,48,360],
+  295:[104,91,63,91,63,68,480],
+  296:[72,60,30,20,30,25,237],
+  297:[144,120,60,40,60,50,474],
+  298:[50,20,40,20,40,20,190],
+  299:[30,45,135,45,90,30,375],
+  300:[50,45,45,35,35,50,260],
+  301:[70,65,65,55,55,70,380],
+  302:[50,75,75,65,65,50,380],
+  303:[50,85,85,55,55,50,380],
+  304:[50,70,100,40,40,30,330],
+  305:[60,90,140,50,50,40,430],
+  306:[70,110,180,60,60,50,530],
+  307:[30,40,55,40,55,60,280],
+  308:[60,60,75,60,75,80,410],
+  309:[45,45,40,45,40,65,280],
+  310:[70,75,60,105,60,105,475],
+  311:[60,50,40,85,75,95,405],
+  312:[60,50,40,75,85,95,405],
+  313:[65,73,55,47,75,85,400],
+  314:[65,47,55,73,75,85,400],
+  315:[50,60,45,100,80,65,400],
+  316:[70,43,53,43,53,43,305],
+  317:[100,73,83,73,83,55,467],
+  318:[45,90,20,65,20,65,305],
+  319:[70,120,40,95,40,95,460],
+  320:[130,70,35,70,35,35,375],
+  321:[170,90,45,90,45,60,500],
+  322:[60,60,40,65,45,35,305],
+  323:[70,100,70,105,75,40,460],
+  324:[70,85,140,85,70,20,470],
+  325:[60,25,35,70,80,60,330],
+  326:[80,45,65,90,110,80,470],
+  327:[60,60,60,60,60,60,360],
+  328:[45,100,45,45,45,10,290],
+  329:[50,70,50,50,50,70,340],
+  330:[80,100,80,80,80,100,520],
+  331:[50,85,40,85,40,35,335],
+  332:[70,115,60,115,60,55,475],
+  333:[45,38,37,56,56,76,308],
+  334:[75,70,90,70,90,80,475],
+  335:[73,115,60,60,60,72,440],
+  336:[73,100,60,100,60,65,458],
+  337:[90,55,65,95,85,70,460],
+  338:[90,95,85,55,65,70,460],
+  339:[50,48,43,46,41,60,288],
+  340:[110,78,73,76,71,60,468],
+  341:[43,80,65,50,35,35,308],
+  342:[63,120,85,90,55,55,468],
+  343:[40,40,60,40,60,35,275],
+  344:[60,70,105,70,105,15,425],
+  345:[66,41,77,61,87,23,355],
+  346:[86,81,97,81,107,43,495],
+  347:[45,95,50,40,50,75,355],
+  348:[75,125,100,70,80,45,495],
+  349:[20,15,20,10,55,80,200],
+  350:[95,60,79,100,125,81,540],
+  351:[70,70,70,70,70,70,420],
+  352:[60,90,70,60,120,40,440],
+  353:[37,75,35,63,33,50,293],
+  354:[64,115,65,83,63,65,455],
+  355:[20,40,90,30,90,25,295],
+  356:[40,70,130,60,130,25,455],
+  357:[99,68,83,72,87,51,460],
+  358:[65,50,70,95,80,65,425],
+  359:[65,130,60,75,60,75,465],
+  360:[50,33,48,33,48,28,240],
+  361:[50,50,50,50,50,50,300],
+  362:[80,80,80,80,80,80,480],
+  363:[70,40,50,55,50,25,290],
+  364:[90,60,70,75,70,45,410],
+  365:[110,80,90,95,90,65,530],
+  366:[35,64,85,74,55,32,345],
+  367:[55,104,105,94,75,52,485],
+  368:[55,84,105,114,75,52,485],
+  369:[100,90,130,45,65,55,485],
+  370:[43,30,55,40,65,97,330],
+  371:[45,75,60,40,30,50,300],
+  372:[65,95,100,60,50,50,420],
+  373:[95,135,80,110,80,100,600],
+  374:[40,55,80,35,60,30,300],
+  375:[60,75,100,55,80,50,420],
+  376:[80,135,130,95,90,70,600],
+  377:[80,100,200,50,100,50,580],
+  378:[80,50,100,95,200,50,575],
+  379:[80,75,150,75,150,50,580],
+  380:[80,80,90,110,130,110,600],
+  381:[80,90,80,130,110,110,600],
+  382:[100,100,90,150,140,90,670],
+  383:[100,150,140,100,90,90,670],
+  384:[105,150,90,150,90,95,680],
+  385:[100,100,100,100,100,100,600],
+  386:[50,150,50,150,50,150,600],
+  387:[55,68,64,45,55,31,318],
+  388:[75,89,85,55,65,36,405],
+  389:[95,109,105,75,85,56,525],
+  390:[44,58,44,58,44,61,309],
+  391:[64,78,52,78,52,81,405],
+  392:[76,104,71,104,71,108,534],
+  393:[53,51,53,61,56,40,314],
+  394:[64,66,68,81,76,50,405],
+  395:[84,86,88,111,101,60,530],
+  396:[40,55,30,30,30,60,245],
+  397:[55,75,45,40,40,80,335],
+  398:[85,120,70,50,60,100,485],
+  399:[59,45,40,35,40,31,250],
+  400:[79,85,60,55,60,71,410],
+  401:[37,25,41,25,41,25,194],
+  402:[77,85,51,55,51,65,384],
+  403:[45,65,34,40,34,45,263],
+  404:[60,85,49,60,49,60,363],
+  405:[80,120,79,95,79,70,523],
+  406:[40,30,35,50,70,55,280],
+  407:[60,70,65,125,105,90,515],
+  408:[67,58,30,38,30,65,288],
+  409:[97,165,60,65,50,58,495],
+  410:[30,42,118,42,88,30,350],
+  411:[60,52,168,47,138,30,495],
+  412:[40,29,45,29,45,36,224],
+  413:[60,59,85,79,105,36,424],
+  414:[40,62,45,80,45,60,332],
+  415:[30,30,42,30,42,70,244],
+  416:[70,80,102,80,102,40,474],
+  417:[60,45,70,45,90,95,405],
+  418:[55,65,35,60,30,85,330],
+  419:[85,105,55,85,50,115,495],
+  420:[45,35,45,62,53,35,275],
+  421:[70,60,70,87,78,85,450],
+  422:[76,48,48,57,62,34,325],
+  423:[111,83,68,92,82,39,475],
+  424:[75,100,66,60,66,115,482],
+  425:[40,29,30,40,30,60,229],
+  426:[150,80,44,90,54,80,498],
+  427:[55,66,44,44,56,85,350],
+  428:[65,76,84,54,96,105,480],
+  429:[60,60,60,105,105,105,495],
+  430:[100,125,52,105,52,71,505],
+  431:[49,55,42,42,37,71,296],
+  432:[71,82,64,64,59,112,452],
+  433:[45,30,50,65,50,45,285],
+  434:[63,63,47,41,41,74,329],
+  435:[103,93,67,71,61,84,479],
+  436:[57,24,86,24,86,23,300],
+  437:[67,89,116,79,116,33,500],
+  438:[58,59,71,22,58,30,298],
+  439:[35,42,120,75,120,40,432],
+  440:[100,5,5,15,65,30,220],
+  441:[76,65,45,92,42,91,411],
+  442:[50,92,108,92,108,35,485],
+  443:[58,70,45,40,45,42,300],
+  444:[68,90,65,50,55,82,410],
+  445:[108,130,95,80,85,102,600],
+  446:[135,85,40,40,85,5,390],
+  447:[40,70,40,35,40,60,285],
+  448:[70,110,70,115,70,90,525],
+  449:[68,72,78,50,60,32,360],
+  450:[108,112,118,68,72,47,525],
+  451:[40,50,90,30,55,65,330],
+  452:[70,90,110,60,75,95,500],
+  453:[48,61,40,61,40,50,300],
+  454:[83,106,65,86,65,85,490],
+  455:[74,100,72,90,72,46,454],
+  456:[49,49,56,49,61,66,330],
+  457:[69,69,76,69,86,91,460],
+  458:[30,40,70,70,25,60,295],
+  459:[60,62,50,62,60,40,334],
+  460:[90,92,75,92,85,60,494],
+  461:[70,120,65,45,85,125,510],
+  462:[70,70,115,130,90,60,535],
+  463:[110,85,95,80,95,50,515],
+  464:[115,140,130,55,55,40,535],
+  465:[100,100,125,110,50,50,535],
+  466:[75,123,67,95,85,95,540],
+  467:[75,95,67,125,95,83,540],
+  468:[85,50,95,120,115,80,545],
+  469:[86,76,86,116,56,95,515],
+  470:[65,110,130,60,65,95,525],
+  471:[65,60,110,130,95,65,525],
+  472:[75,95,125,45,75,95,510],
+  473:[110,130,80,70,60,80,530],
+  474:[85,80,70,135,75,90,535],
+  475:[68,125,65,65,115,80,518],
+  476:[60,55,145,75,150,40,525],
+  477:[45,100,135,65,135,45,525],
+  478:[70,80,70,80,70,110,480],
+  479:[50,50,77,95,77,91,440],
+  480:[75,75,130,75,130,95,580],
+  481:[80,105,105,105,105,80,580],
+  482:[115,125,70,125,70,115,620],
+  483:[100,120,120,150,100,90,680],
+  484:[90,120,100,150,120,100,680],
+  485:[91,90,106,130,106,77,600],
+  486:[110,160,110,80,110,100,670],
+  487:[150,100,120,100,120,90,680],
+  488:[120,70,120,75,130,85,600],
+  489:[80,80,80,80,80,80,480],
+  490:[100,100,100,100,100,100,600],
+  491:[70,90,90,135,90,125,600],
+  492:[100,103,75,120,75,127,600],
+  493:[120,120,120,120,120,120,720],
+  494:[100,100,100,100,100,100,600],
+  495:[45,45,55,45,55,63,308],
+  496:[60,60,75,60,75,83,413],
+  497:[75,75,95,75,95,113,528],
+  498:[65,63,45,45,45,45,308],
+  499:[90,93,55,70,55,55,418],
+  500:[110,123,65,100,65,65,528],
+  501:[55,55,45,63,45,45,308],
+  502:[75,75,60,83,60,60,413],
+  503:[95,100,85,108,70,70,528],
+  504:[35,55,35,35,35,90,285],
+  505:[60,85,69,60,69,77,420],
+  506:[45,60,45,25,45,60,280],
+  507:[65,80,65,35,65,60,370],
+  508:[85,110,90,45,90,80,500],
+  509:[41,35,35,50,50,65,276],
+  510:[64,60,60,75,75,106,440],
+  511:[50,53,48,53,48,64,316],
+  512:[75,98,63,98,63,101,498],
+  513:[50,53,48,53,48,64,316],
+  514:[75,98,63,98,63,101,498],
+  515:[50,53,48,53,48,64,316],
+  516:[75,98,63,98,63,101,498],
+  517:[76,25,45,67,55,24,292],
+  518:[116,55,85,107,95,29,487],
+  519:[50,55,50,36,30,43,264],
+  520:[62,77,62,50,42,65,358],
+  521:[80,105,60,65,60,93,463],
+  522:[45,60,32,50,32,76,295],
+  523:[75,100,63,80,63,116,497],
+  524:[55,75,85,25,25,15,280],
+  525:[70,105,105,50,40,20,390],
+  526:[85,135,130,60,70,25,505],
+  527:[55,45,43,55,43,72,313],
+  528:[67,57,55,77,55,114,425],
+  529:[60,85,40,40,40,40,305],
+  530:[110,135,60,50,65,88,508],
+  531:[103,60,86,60,86,50,445],
+  532:[35,80,40,35,35,35,260],
+  533:[85,105,85,40,50,40,405],
+  534:[105,140,95,55,65,45,505],
+  535:[50,50,40,50,40,44,274],
+  536:[75,65,55,65,55,69,384],
+  537:[105,95,75,85,75,74,509],
+  538:[120,100,85,30,85,45,465],
+  539:[75,125,75,30,75,85,465],
+  540:[45,53,70,40,60,42,310],
+  541:[55,63,90,47,70,42,367],
+  542:[75,103,80,70,70,92,490],
+  543:[30,35,30,30,30,40,195],
+  544:[70,55,90,55,75,40,385],
+  545:[60,100,89,55,69,112,485],
+  546:[40,27,60,37,50,66,280],
+  547:[60,67,85,77,75,116,480],
+  548:[45,35,50,70,50,30,280],
+  549:[70,60,75,110,75,90,480],
+  550:[70,92,65,80,55,98,460],
+  551:[50,72,35,35,35,65,292],
+  552:[60,82,45,45,45,74,351],
+  553:[95,117,80,65,70,92,519],
+  554:[70,90,45,15,45,50,315],
+  555:[105,140,55,30,55,95,480],
+  556:[75,86,67,106,67,60,461],
+  557:[50,65,85,35,35,55,325],
+  558:[70,95,125,65,75,45,475],
+  559:[50,75,70,35,70,48,348],
+  560:[65,90,115,45,115,58,488],
+  561:[72,58,80,103,80,97,490],
+  562:[38,30,85,55,65,55,328],
+  563:[58,50,145,75,105,30,463],
+  564:[54,78,103,53,45,22,355],
+  565:[74,108,133,83,65,32,495],
+  566:[55,112,45,74,45,70,401],
+  567:[75,140,65,112,65,110,567],
+  568:[50,50,62,40,62,65,329],
+  569:[80,95,82,60,82,75,474],
+  570:[40,30,40,65,40,65,280],
+  571:[60,105,60,120,60,105,510],
+  572:[55,50,40,40,40,75,300],
+  573:[75,95,60,65,60,115,470],
+  574:[45,30,55,65,55,45,295],
+  575:[60,45,70,80,70,55,380],
+  576:[70,55,95,95,85,60,460],
+  577:[45,30,40,105,50,20,290],
+  578:[65,40,50,125,60,30,370],
+  579:[110,65,75,125,85,30,490],
+  580:[62,44,47,58,47,69,327],
+  581:[75,87,63,87,63,98,473],
+  582:[36,50,50,65,60,44,305],
+  583:[51,65,65,80,75,59,395],
+  584:[71,95,85,110,95,79,535],
+  585:[60,60,50,40,50,75,335],
+  586:[80,80,70,60,70,95,455],
+  587:[55,75,60,75,60,103,428],
+  588:[50,75,45,40,45,60,315],
+  589:[70,135,105,60,105,20,495],
+  590:[69,55,45,55,55,15,294],
+  591:[114,85,70,85,80,30,464],
+  592:[55,40,50,65,85,40,335],
+  593:[100,60,70,85,105,60,480],
+  594:[165,75,80,40,45,65,470],
+  595:[50,47,50,57,50,65,319],
+  596:[70,77,60,97,60,108,472],
+  597:[44,50,91,24,86,10,305],
+  598:[74,94,131,54,116,20,489],
+  599:[40,55,70,45,60,30,300],
+  600:[60,80,95,70,85,50,440],
+  601:[60,100,115,70,85,90,520],
+  602:[35,55,40,45,40,60,275],
+  603:[65,85,70,75,70,40,405],
+  604:[85,115,80,105,80,50,515],
+  605:[55,55,55,85,55,30,335],
+  606:[75,75,75,125,95,40,485],
+  607:[50,30,55,65,55,20,275],
+  608:[60,40,60,95,60,55,370],
+  609:[60,55,90,145,90,80,520],
+  610:[46,87,60,30,40,57,320],
+  611:[66,117,70,40,50,67,410],
+  612:[76,147,90,60,70,97,540],
+  613:[55,70,40,60,40,40,305],
+  614:[95,110,80,70,80,50,485],
+  615:[70,50,30,95,135,105,485],
+  616:[50,40,85,40,65,25,305],
+  617:[80,70,40,60,60,145,455],
+  618:[109,66,84,32,81,32,404],
+  619:[45,85,50,55,50,65,350],
+  620:[90,125,80,90,65,105,555],
+  621:[77,120,90,60,90,48,485],
+  622:[55,70,55,45,55,40,320],
+  623:[89,124,80,55,80,55,483],
+  624:[45,85,70,40,40,70,350],
+  625:[65,125,100,60,70,85,505],
+  626:[95,110,95,40,95,55,490],
+  627:[70,83,50,37,50,60,350],
+  628:[100,123,75,57,75,80,510],
+  629:[70,55,75,45,65,60,370],
+  630:[110,65,105,55,95,80,510],
+  631:[85,85,70,85,75,65,465],
+  632:[58,109,112,48,48,109,484],
+  633:[52,65,50,45,50,38,300],
+  634:[72,85,70,65,70,58,420],
+  635:[92,105,90,125,90,98,600],
+  636:[55,85,55,50,55,60,360],
+  637:[85,60,65,135,105,100,550],
+  638:[91,90,129,90,72,108,580],
+  639:[91,129,90,72,90,108,580],
+  640:[91,90,72,90,129,108,580],
+  641:[79,115,70,125,80,111,580],
+  642:[79,115,70,125,80,111,580],
+  643:[100,120,100,170,120,90,700],
+  644:[100,150,120,120,100,90,680],
+  645:[89,125,90,115,80,101,600],
+  646:[125,130,90,130,90,95,660],
+  647:[91,72,90,129,90,108,580],
+  648:[100,77,77,128,128,90,600],
+  649:[71,120,95,120,95,99,600],
+  650:[56,61,65,48,45,38,313],
+  651:[78,82,88,63,56,57,424],
+  652:[88,107,122,74,75,64,530],
+  653:[40,45,40,62,55,60,302],
+  654:[59,59,58,90,70,73,409],
+  655:[75,69,72,114,100,104,534],
+  656:[41,56,40,62,44,71,314],
+  657:[61,77,57,95,58,94,442],
+  658:[72,95,67,103,71,122,530],
+  659:[57,50,50,50,50,50,307],
+  660:[78,150,100,50,60,78,516],
+  661:[45,50,43,40,38,62,278],
+  662:[62,73,55,56,52,84,382],
+  663:[78,81,71,74,69,126,499],
+  664:[38,35,40,27,25,35,200],
+  665:[45,22,60,27,30,29,213],
+  666:[80,52,50,90,50,89,411],
+  667:[62,50,58,73,54,72,369],
+  668:[86,68,72,109,66,106,507],
+  669:[44,38,39,61,79,42,303],
+  670:[54,48,49,71,89,52,363],
+  671:[78,68,69,111,119,72,517],
+  672:[65,60,48,54,69,52,348],
+  673:[100,100,62,82,81,65,490],
+  674:[67,82,57,57,57,41,361],
+  675:[95,124,78,69,71,58,495],
+  676:[75,80,60,65,90,60,430],
+  677:[62,48,54,63,60,68,355],
+  678:[74,48,76,83,81,104,466],
+  679:[45,80,100,35,37,28,325],
+  680:[59,110,150,45,49,38,451],
+  681:[60,50,140,50,140,60,500],
+  682:[78,44,44,52,80,43,341],
+  683:[101,72,72,99,89,29,462],
+  684:[82,44,46,58,47,73,350],
+  685:[82,109,71,73,66,80,481],
+  686:[56,92,31,41,31,55,306],
+  687:[86,92,61,91,61,60,451],
+  688:[61,52,60,38,44,43,298],
+  689:[72,105,115,54,86,68,500],
+  690:[50,74,35,59,79,52,349],
+  691:[65,75,90,97,123,44,494],
+  692:[50,53,62,58,63,44,330],
+  693:[71,73,88,120,89,64,505],
+  694:[44,38,31,61,39,70,283],
+  695:[62,55,52,109,94,109,481],
+  696:[58,89,77,45,45,41,355],
+  697:[82,121,119,69,59,71,521],
+  698:[77,59,50,67,63,46,362],
+  699:[123,77,72,99,92,58,521],
+  700:[95,65,65,110,130,60,525],
+  701:[78,136,88,36,88,118,544],
+  702:[67,58,57,81,67,101,431],
+  703:[50,50,150,50,150,50,500],
+  704:[45,40,50,35,35,40,245],
+  705:[68,75,53,83,83,43,405],
+  706:[90,100,70,110,150,80,600],
+  707:[57,80,91,80,87,75,470],
+  708:[37,70,50,66,50,51,324],
+  709:[85,110,76,65,82,56,474],
+  710:[49,66,70,44,55,51,335],
+  711:[65,90,122,58,75,84,494],
+  712:[55,69,85,32,35,28,304],
+  713:[95,117,184,44,46,28,514],
+  714:[40,38,35,46,34,55,248],
+  715:[85,70,80,97,80,123,535],
+  716:[126,131,95,131,98,99,680],
+  717:[126,131,95,131,98,99,680],
+  718:[108,100,121,81,95,95,600],
+  719:[50,100,150,100,150,50,600],
+  720:[80,110,60,150,130,70,600],
+  721:[80,110,120,130,90,70,600],
+  722:[68,56,42,50,54,42,312],
+  723:[78,75,75,70,70,52,420],
+  724:[78,107,75,100,100,70,530],
+  725:[45,65,40,60,40,40,290],
+  726:[65,90,60,80,60,65,420],
+  727:[95,115,90,80,90,60,530],
+  728:[50,55,40,35,40,45,265],
+  729:[60,69,45,65,45,65,349],
+  730:[80,74,74,98,96,52,474],
+  731:[35,75,30,30,30,65,265],
+  732:[55,85,50,50,50,75,365],
+  733:[65,120,70,70,70,98,493],
+  734:[48,72,38,36,38,46,278],
+  735:[88,110,60,55,60,45,418],
+  736:[47,62,45,40,40,40,274],
+  737:[57,82,95,55,75,36,400],
+  738:[77,70,90,145,75,43,500],
+  739:[47,82,57,42,47,63,338],
+  740:[55,132,77,62,67,43,436],
+  741:[75,70,70,98,70,93,476],
+  742:[40,27,25,27,25,67,211],
+  743:[60,55,60,95,70,124,464],
+  744:[45,65,45,45,45,65,310],
+  745:[75,115,65,55,65,112,487],
+  746:[45,20,20,25,25,40,175],
+  747:[35,53,62,43,52,45,290],
+  748:[50,63,152,53,142,35,495],
+  749:[65,100,70,45,55,35,370],
+  750:[100,125,100,55,85,35,500],
+  751:[38,40,52,40,72,27,269],
+  752:[68,70,92,50,132,78,490],
+  753:[40,55,35,50,35,35,250],
+  754:[70,105,90,80,90,45,480],
+  755:[40,35,55,65,75,15,285],
+  756:[60,45,80,90,100,30,405],
+  757:[48,44,40,71,40,62,305],
+  758:[68,64,60,111,60,77,440],
+  759:[68,75,67,65,50,35,360],
+  760:[120,125,80,55,60,60,500],
+  761:[42,30,38,30,38,32,210],
+  762:[52,40,48,40,48,62,290],
+  763:[72,120,98,50,98,72,510],
+  764:[51,52,90,82,110,65,450],
+  765:[60,90,110,60,110,30,460],
+  766:[100,120,90,40,90,80,520],
+  767:[25,35,40,20,30,80,230],
+  768:[75,125,140,60,90,40,530],
+  769:[55,55,80,70,45,15,320],
+  770:[55,75,110,70,130,30,470],
+  771:[55,60,130,30,130,5,410],
+  772:[95,95,95,95,95,59,534],
+  773:[95,95,95,95,95,95,570],
+  774:[60,60,100,60,100,60,440],
+  775:[65,115,65,35,65,35,380],
+  776:[60,78,135,91,85,36,485],
+  777:[63,73,67,45,67,96,411],
+  778:[55,90,80,90,105,96,516],
+  779:[68,105,70,70,70,92,475],
+  780:[78,60,85,135,91,36,485],
+  781:[70,80,90,100,90,40,470],
+  782:[45,55,75,35,35,45,290],
+  783:[55,75,95,45,45,68,383],
+  784:[100,165,150,85,70,95,665],
+  785:[70,115,85,95,85,150,600],
+  786:[70,85,75,130,115,95,570],
+  787:[70,130,115,85,95,75,570],
+  788:[70,75,115,95,130,85,570],
+  789:[43,29,31,29,31,37,200],
+  790:[43,29,131,29,131,37,400],
+  791:[137,80,107,80,107,89,600],
+  792:[137,113,89,113,89,107,648],
+  793:[109,53,47,127,131,103,570],
+  794:[107,139,139,53,53,79,570],
+  795:[71,137,37,137,37,151,570],
+  796:[83,35,109,35,109,83,454],
+  797:[97,101,103,107,101,61,570],
+  798:[59,181,131,59,31,109,570],
+  799:[223,101,53,97,53,43,570],
+  800:[97,107,101,127,89,79,600],
+  801:[80,95,115,130,115,65,600],
+  802:[80,125,80,90,90,60,525],
+  803:[67,73,67,73,67,73,420],
+  804:[73,73,73,127,73,121,540],
+  805:[61,100,145,65,105,28,504],
+  806:[53,127,53,151,79,107,570],
+  807:[88,112,75,102,80,143,600],
+  808:[46,65,65,55,40,35,306],
+  809:[135,143,143,65,143,35,664],
+  810:[50,65,90,45,90,40,380],
+  811:[70,75,98,55,98,67,463],
+  812:[100,125,90,60,70,85,530],
+  813:[50,71,58,44,58,57,338],
+  814:[65,86,60,55,60,94,420],
+  815:[80,116,75,65,75,119,530],
+  816:[50,54,40,66,56,65,331],
+  817:[65,69,55,81,71,90,431],
+  818:[70,85,65,125,65,120,530],
+  819:[44,62,55,35,35,25,256],
+  820:[74,98,95,40,55,20,382],
+  821:[38,47,35,37,35,57,249],
+  822:[68,67,55,67,55,77,389],
+  823:[98,87,105,53,85,67,495],
+  824:[25,30,38,30,38,30,191],
+  825:[50,50,70,50,100,30,350],
+  826:[60,45,110,90,110,90,505],
+  827:[40,28,28,47,52,73,268],
+  828:[70,58,58,87,92,103,468],
+  829:[40,40,60,40,60,10,250],
+  830:[60,50,90,50,90,30,370],
+  831:[42,55,45,30,30,55,257],
+  832:[72,80,100,55,60,80,447],
+  833:[50,64,50,44,50,44,302],
+  834:[90,115,90,54,76,40,465],
+  835:[45,55,40,45,40,71,296],
+  836:[69,90,60,90,60,121,490],
+  837:[30,40,50,40,50,30,240],
+  838:[80,60,90,60,90,50,430],
+  839:[110,80,120,80,90,30,510],
+  840:[40,40,80,40,40,20,260],
+  841:[70,110,80,95,60,70,485],
+  842:[65,85,80,100,80,40,450],
+  843:[52,57,75,35,50,46,315],
+  844:[72,107,125,65,70,71,510],
+  845:[70,85,45,85,45,85,415],
+  846:[41,63,40,40,30,71,285],
+  847:[61,123,60,60,50,136,490],
+  848:[40,38,35,54,35,67,269],
+  849:[75,98,70,114,70,75,502],
+  850:[50,70,44,60,44,45,313],
+  851:[100,115,65,90,65,65,500],
+  852:[50,68,60,50,50,42,320],
+  853:[80,118,90,70,80,42,480],
+  854:[40,45,45,74,54,50,308],
+  855:[60,65,65,74,54,60,378],
+  856:[42,25,45,63,63,32,270],
+  857:[57,40,65,95,95,32,384],
+  858:[57,90,95,136,103,29,510],
+  859:[45,85,75,55,75,60,395],
+  860:[62,100,85,75,100,75,497],
+  861:[95,120,65,95,75,60,510],
+  862:[70,90,130,60,80,60,490],
+  863:[70,110,100,50,60,50,440],
+  864:[60,95,85,65,105,50,460],
+  865:[67,200,60,35,60,71,493],
+  866:[80,80,90,90,100,70,510],
+  867:[58,95,145,50,105,30,483],
+  868:[45,40,40,50,61,41,277],
+  869:[65,60,75,110,121,64,495],
+  870:[65,100,100,70,60,75,470],
+  871:[48,101,95,91,85,15,435],
+  872:[30,25,35,45,30,20,185],
+  873:[70,65,60,125,90,65,475],
+  874:[100,135,210,30,90,35,600],
+  875:[75,80,110,65,90,55,475],
+  876:[60,65,55,105,95,95,475],
+  877:[58,64,58,111,58,64,413],
+  878:[72,82,78,82,78,46,438],
+  879:[122,130,69,101,69,30,521],
+  880:[90,100,90,80,90,85,535],
+  881:[90,80,65,90,65,85,475],
+  882:[90,90,100,80,70,75,505],
+  883:[90,80,90,55,80,39,434],
+  884:[70,95,115,120,65,85,550],
+  885:[28,60,30,40,30,82,270],
+  886:[68,80,50,60,50,102,410],
+  887:[88,120,75,100,75,142,600],
+  888:[92,150,115,80,115,148,700],
+  889:[92,130,145,80,145,128,720],
+  890:[140,85,95,145,95,130,690],
+  891:[60,130,100,35,100,85,510],
+  892:[100,130,100,63,60,97,550],
+  893:[105,120,105,70,95,105,600],
+  894:[80,116,60,60,60,204,580],
+  895:[80,60,30,116,30,116,432],
+  896:[100,145,130,65,110,30,580],
+  897:[100,65,60,145,80,130,580],
+  898:[100,80,80,80,80,80,500],
+  899:[103,105,72,105,72,43,500],
+  900:[70,135,95,45,95,85,525],
+  901:[130,140,105,45,80,50,550],
+  902:[120,112,65,80,75,78,530],
+  903:[80,130,60,40,85,120,515],
+  904:[85,115,95,65,95,85,540],
+  905:[74,115,70,135,80,106,580],
+  906:[40,61,54,45,45,65,310],
+  907:[61,80,63,60,63,83,410],
+  908:[76,110,70,81,70,123,530],
+  909:[67,45,59,40,45,36,292],
+  910:[81,55,78,90,58,49,411],
+  911:[104,75,100,110,75,66,530],
+  912:[55,65,45,65,50,45,325],
+  913:[65,85,65,80,65,59,419],
+  914:[85,120,80,85,75,85,530],
+  915:[54,45,45,35,45,35,259],
+  916:[100,90,70,45,70,45,420],
+  917:[35,35,40,27,25,17,179],
+  918:[60,60,65,35,35,70,325],
+  919:[28,47,52,31,29,50,237],
+  920:[71,102,78,52,55,92,450],
+  921:[45,50,20,40,25,60,240],
+  922:[60,75,40,55,40,85,355],
+  923:[85,115,70,70,70,105,515],
+  924:[50,50,45,35,35,75,290],
+  925:[61,60,60,40,45,50,316],
+  926:[37,55,70,30,55,65,312],
+  927:[60,80,99,44,82,43,408],
+  928:[41,29,55,30,55,30,240],
+  929:[51,39,65,35,65,40,295],
+  930:[70,50,85,80,85,39,409],
+  931:[70,60,60,60,60,82,392],
+  932:[55,65,100,65,50,20,355],
+  933:[60,80,130,45,65,30,410],
+  934:[100,100,130,45,90,30,495],
+  935:[44,40,71,40,71,35,301],
+  936:[85,60,100,125,80,75,525],
+  937:[75,125,80,60,100,85,525],
+  938:[37,35,40,35,40,34,221],
+  939:[109,55,80,109,80,40,473],
+  940:[40,40,35,55,40,70,280],
+  941:[70,70,60,105,60,125,490],
+  942:[50,50,60,30,40,51,281],
+  943:[80,120,90,60,60,85,495],
+  944:[45,15,40,35,45,75,255],
+  945:[63,95,65,70,60,110,463],
+  946:[40,40,61,40,61,30,272],
+  947:[55,115,76,55,76,78,455],
+  948:[40,40,35,50,100,20,285],
+  949:[55,61,65,60,130,45,416],
+  950:[70,100,115,35,35,75,430],
+  951:[49,40,57,40,57,40,283],
+  952:[65,108,80,75,80,108,516],
+  953:[25,35,40,35,35,45,215],
+  954:[45,35,90,100,90,55,415],
+  955:[30,35,30,55,30,75,255],
+  956:[85,60,60,101,60,105,471],
+  957:[50,45,45,35,64,50,289],
+  958:[65,55,70,45,80,60,375],
+  959:[85,75,130,75,130,94,589],
+  960:[45,40,35,35,35,28,218],
+  961:[35,100,35,35,35,143,383],
+  962:[70,103,82,53,62,65,435],
+  963:[70,74,74,38,38,52,346],
+  964:[100,160,97,106,87,100,650],
+  965:[30,40,70,40,70,35,285],
+  966:[80,119,90,69,90,90,538],
+  967:[70,95,45,95,45,65,415],
+  968:[60,95,144,50,144,43,536],
+  969:[30,55,90,100,50,45,370],
+  970:[70,75,130,91,89,40,495],
+  971:[35,55,50,30,50,50,270],
+  972:[60,95,90,75,70,30,420],
+  973:[70,113,65,50,65,90,453],
+  974:[45,65,55,45,55,35,300],
+  975:[110,130,90,45,90,50,515],
+  976:[75,72,74,106,56,89,472],
+  977:[220,100,130,10,60,10,530],
+  978:[46,73,56,73,56,74,378],
+  979:[110,115,65,90,65,60,505],
+  980:[130,75,60,75,130,20,490],
+  981:[90,100,70,90,90,60,500],
+  982:[100,100,80,75,80,55,490],
+  983:[100,135,120,60,85,50,550],
+  984:[115,131,131,53,53,87,570],
+  985:[115,65,99,65,115,111,570],
+  986:[111,127,99,79,99,55,570],
+  987:[55,55,55,135,135,135,570],
+  988:[85,135,85,85,85,85,560],
+  989:[90,81,83,81,83,87,505],
+  990:[115,131,131,53,53,87,570],
+  991:[56,80,114,122,60,136,568],
+  992:[154,140,108,50,68,50,570],
+  993:[91,83,99,83,113,91,560],
+  994:[70,77,55,140,95,93,530],
+  995:[100,134,110,70,90,91,595],
+  996:[65,75,45,45,45,55,330],
+  997:[85,95,65,65,65,62,437],
+  998:[115,145,92,75,86,87,600],
+  999:[45,30,70,75,70,10,300],
+  1000:[87,60,95,133,91,84,550],
+  1001:[55,55,75,65,105,55,410],
+  1002:[80,120,80,90,65,135,570],
+  1003:[110,100,100,80,70,60,520],
+  1004:[55,55,70,135,120,100,535],
+  1005:[105,139,71,55,101,79,550],
+  1006:[74,130,130,116,116,84,650],
+  1007:[100,135,115,85,100,135,670],
+  1008:[100,85,115,135,100,135,670],
+  1009:[99,83,91,125,83,109,590],
+  1010:[90,70,108,120,108,60,556],
+  1011:[80,80,110,95,80,40,485],
+  1012:[40,45,45,74,54,50,308],
+  1013:[60,65,65,74,54,60,378],
+  1014:[86,128,98,52,52,88,504],
+  1015:[78,75,64,130,80,108,535],
+  1016:[88,91,82,70,100,105,536],
+  1017:[80,120,84,60,96,110,550],
+  1018:[90,105,130,125,90,55,595],
+  1019:[106,80,110,120,80,59,555],
+  1020:[105,115,90,145,80,95,630],
+  1021:[125,73,91,137,89,75,590],
+  1022:[100,120,120,100,120,85,645],
+  1023:[100,100,120,120,100,85,625],
+  1024:[90,65,65,85,65,80,450],
+  1025:[88,88,160,88,88,88,600]
+};
+
+var BUILDS={
+  3:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Calm',up:'Sp.Def',dn:'Atk'}],
+     ab:{nm:'Overgrow',ds:'Boosts Grass moves by 50% when HP is below 1/3.'},
+     mv:[{nm:'Petal Blizzard',tp:'Grass',rl:'STAB'},{nm:'Sludge Bomb',tp:'Poison',rl:'STAB coverage'},{nm:'Synthesis',tp:'Grass',rl:'Recovery'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'}],
+     bt:'Venusaur Bulky Special Attacker Sp.Atk ดี ใช้ Sludge Bomb โจมตี Fairy-type Mega Venusaur มี Thick Fat ทน Fire/Ice',
+     fm:'ใช้ Petal Blizzard + Synthesis ฟื้นเลือดระหว่างสู้กลุ่มศัตรู เหมาะ zone ที่มี Water/Rock/Ground'},
+  6:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+     ab:{nm:'Blaze',ds:'Boosts Fire moves by 50% when HP is below 1/3.'},
+     mv:[{nm:'Flare Blitz',tp:'Fire',rl:'STAB physical'},{nm:'Dragon Claw',tp:'Dragon',rl:'Coverage'},{nm:'Thunder Punch',tp:'Electric',rl:'Anti-Water'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'}],
+     bt:'Mega Charizard X (Dragon/Fire) มี Tough Claws บูสต์ contact moves Charizard Y ใช้ Drought + Solar Beam เป็น Special attacker แทน',
+     fm:'บินข้าม zone ได้ไว Flare Blitz กวาดศัตรู Bug/Grass/Ice ได้ง่ายใน 1-2 hit'},
+  9:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Bold',up:'Def',dn:'Atk'}],
+     ab:{nm:'Torrent',ds:'Boosts Water moves by 50% when HP is below 1/3.'},
+     mv:[{nm:'Hydro Pump',tp:'Water',rl:'STAB nuke'},{nm:'Ice Beam',tp:'Ice',rl:'Coverage'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Flash Cannon',tp:'Steel',rl:'Anti-Fairy'}],
+     bt:'Mega Blastoise Special Tank มี Mega Launcher บูสต์ pulse/ball moves Hydro Pump + Ice Beam ครอบคลุมกว้าง',
+     fm:'ทนทาน ใช้ Hydro Pump กวาด Fire/Rock/Ground zone ได้รวดเร็ว'},
+  25:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+      ab:{nm:'Static',ds:'30% chance to paralyze attacker on contact.'},
+      mv:[{nm:'Thunderbolt',tp:'Electric',rl:'STAB reliable'},{nm:'Volt Tackle',tp:'Electric',rl:'STAB power'},{nm:'Iron Tail',tp:'Steel',rl:'Anti-Fairy/Rock'},{nm:'Quick Attack',tp:'Normal',rl:'Priority'}],
+      bt:'Speed สูง ใช้ Thunderbolt เป็นหลัก Light Ball ทำให้ Atk/Sp.Atk x2 Volt Tackle ใช้กับศัตรูอ่อน',
+      fm:'เหมาะ farm ศัตรู Water/Flying ที่อ่อนต่อ Electric ทำให้จบเร็ว'},
+  65:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+      ab:{nm:'Synchronize',ds:'Passes burn, poison, or paralysis back to the attacker.'},
+      mv:[{nm:'Psyshock',tp:'Psychic',rl:'STAB hits Def'},{nm:'Shadow Ball',tp:'Ghost',rl:'Coverage'},{nm:'Focus Blast',tp:'Fighting',rl:'Anti-Dark/Steel'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+      bt:'Mega Alakazam Sp.Atk สูงมาก ใช้ Calm Mind setup แล้วกด Psyshock ทำลายทุกอย่าง Trace copy ability ศัตรูได้ก่อน Mega',
+      fm:'จบด้วย Psyshock ได้ไวมาก Teleport เคลื่อนที่เร็ว เหมาะ farm หลายจุด'},
+  94:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+      ab:{nm:'Cursed Body',ds:'30% chance to disable a move that makes contact.'},
+      mv:[{nm:'Shadow Ball',tp:'Ghost',rl:'STAB'},{nm:'Sludge Wave',tp:'Poison',rl:'STAB coverage'},{nm:'Hypnosis',tp:'Psychic',rl:'Status/Setup'},{nm:'Perish Song',tp:'Normal',rl:'Utility'}],
+      bt:'Gengar เร็วมาก ใช้ Hypnosis ทำให้ศัตรูหลับก่อน Mega Gengar มี Shadow Tag กักศัตรูไว้ + Perish Song บังคับ KO',
+      fm:'ใช้ Hypnosis หยุดศัตรูจับง่าย เหมาะ farm ใน zone ที่มี Psychic/Ghost-type'},
+
+  149:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Multiscale',ds:'Halves damage when at full HP.'},
+       mv:[{nm:'Outrage',tp:'Dragon',rl:'STAB nuke'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Fire Punch',tp:'Fire',rl:'Anti-Steel/Ice'},{nm:'Thunder Punch',tp:'Electric',rl:'Coverage'}],
+       bt:'Mega Dragonite (A-Tier) มี Multiscale ทน hit แรกได้ ใช้ Outrage ทำลายทุกอย่าง Earthquake สำหรับ Steel-type',
+       fm:'บินข้าม zone ได้ไว Outrage กวาดศัตรูกลุ่มโดยไม่สนใจ type มาก'},
+  150:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Pressure',ds:'Forces opponents to use 2 PP per move.'},
+       mv:[{nm:'Psystrike',tp:'Psychic',rl:'STAB hits Def'},{nm:'Ice Beam',tp:'Ice',rl:'Coverage'},{nm:'Flamethrower',tp:'Fire',rl:'Coverage'},{nm:'Aura Sphere',tp:'Fighting',rl:'Never miss'}],
+       bt:'Mega Mewtwo Y มี Sp.Atk สูงสุดในเกม ใช้ Psystrike โจมตีผ่าน Sp.Def ของ opponent B-Tier Ranked ปัจจุบัน',
+       fm:'จบศัตรูได้ใน 1-2 hit เหมาะ farm ทุก zone โดยเฉพาะ Fighting/Poison zone'},
+  160:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Sheer Force',ds:'Boosts moves with secondary effects by 30%, removes those effects.'},
+       mv:[{nm:'Waterfall',tp:'Water',rl:'STAB reliable'},{nm:'Crunch',tp:'Dark',rl:'Coverage'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'}],
+       bt:'Feraligatr Top-tier Story (Game8) Sheer Force บูสต์ moves ที่มี secondary effect Mega Feraligatr มี Dragon Dance setup ได้',
+       fm:'ทั้ง Atk/Def ดี เหมาะ farm ทุกประเภท โดยเฉพาะ zone ที่ต้องสู้ boss Pokemon'},
+  196:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Magic Bounce',ds:'Reflects status moves back to the user.'},
+       mv:[{nm:'Psyshock',tp:'Psychic',rl:'STAB hits Def'},{nm:'Shadow Ball',tp:'Ghost',rl:'Coverage'},{nm:'Dazzling Gleam',tp:'Fairy',rl:'Coverage'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+       bt:'Espeon เร็วและ Sp.Atk ดี Magic Bounce reflect entry hazards และ status moves Calm Mind 1 ครั้งแล้วกวาด',
+       fm:'ใช้ Psyshock จบ Poison/Fighting zone ได้ไว Magic Bounce ป้องกัน status จาก wild Pokemon'},
+  197:{natures:[{nm:'Careful',up:'Sp.Def',dn:'Sp.Atk'},{nm:'Sassy',up:'Sp.Def',dn:'Speed'}],
+       ab:{nm:'Synchronize',ds:'Passes status conditions back to attacker.'},
+       mv:[{nm:'Foul Play',tp:'Dark',rl:'STAB uses enemy Atk'},{nm:'Moonlight',tp:'Fairy',rl:'Recovery'},{nm:'Toxic',tp:'Poison',rl:'Stall/Status'},{nm:'Crunch',tp:'Dark',rl:'STAB reliable'}],
+       bt:'Umbreon Defensive Wall Sp.Def สูงมาก ใช้ Foul Play + Toxic + Moonlight เล่น stall ได้ดี',
+       fm:'ทนมาก เหมาะ farm zone ยากๆ ที่มี Special attacker เยอะ ไม่ต้องกลับ heal บ่อย'},
+  248:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Brave',up:'Atk',dn:'Speed'}],
+       ab:{nm:'Sand Stream',ds:'Summons Sandstorm for 5 turns on entry. Boosts Rock-type Sp.Def by 50%.'},
+       mv:[{nm:'Crunch',tp:'Dark',rl:'STAB'},{nm:'Rock Blast',tp:'Rock',rl:'STAB multi-hit'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'}],
+       bt:'Tyranitar Pseudo-Legendary Sand Stream ตั้ง Sandstorm + บูสต์ Sp.Def ของ Rock-type Crunch + Rock Blast เป็น dual-STAB Mega Tyranitar B-Tier Ranked',
+       fm:'ทน Sandstorm เอง ใช้ Crunch+Earthquake กวาดศัตรูได้กว้าง เหมาะ farm หลาย type'},
+  257:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Speed Boost',ds:'Raises Speed by 1 stage at end of each turn.'},
+       mv:[{nm:'Flare Blitz',tp:'Fire',rl:'STAB physical'},{nm:'High Jump Kick',tp:'Fighting',rl:'STAB powerful'},{nm:'Thunder Punch',tp:'Electric',rl:'Coverage'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'}],
+       bt:'Blaziken มี Speed Boost ทำให้ยิ่งเร็วขึ้นทุก turn High Jump Kick + Flare Blitz Swords Dance setup แล้วแทบสู้ไม่ได้',
+       fm:'Speed Boost ทำให้ลงมือก่อนทุกคน เหมาะ farm zone ที่มี Ice/Normal/Rock'},
+  260:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Relaxed',up:'Def',dn:'Speed'}],
+       ab:{nm:'Torrent',ds:'Boosts Water moves by 50% when HP is below 1/3.'},
+       mv:[{nm:'Waterfall',tp:'Water',rl:'STAB'},{nm:'Earthquake',tp:'Ground',rl:'STAB dual'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'},{nm:'Rock Slide',tp:'Rock',rl:'Coverage'}],
+       bt:'Swampert Water/Ground ไม่มีจุดอ่อน Electric Waterfall + Earthquake dual-STAB Mega Swampert มี Swift Swim + Rain ทำให้เร็วมากในฝน',
+       fm:'ไม่มีจุดอ่อน Electric จัดการ zone ที่มี Fire/Poison/Rock ได้ดี'},
+  282:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Synchronize',ds:'Passes status conditions back to attacker.'},
+       mv:[{nm:'Moonblast',tp:'Fairy',rl:'STAB'},{nm:'Psyshock',tp:'Psychic',rl:'STAB hits Def'},{nm:'Thunderbolt',tp:'Electric',rl:'Coverage'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+       bt:'Gardevoir Top-tier Story (Game8) Mega Gardevoir S-Tier Ranked มี Pixilate ใช้ Teleport reposition ในระบบ real-time ได้ดี',
+       fm:'Moonblast จบ Dark/Dragon zone ไว Calm Mind สะสม ตัวเดียวสู้ได้ทั้ง zone'},
+  373:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Intimidate',ds:'Lowers opponent Attack by 1 stage on entry.'},
+       mv:[{nm:'Outrage',tp:'Dragon',rl:'STAB nuke'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Fire Fang',tp:'Fire',rl:'Coverage'},{nm:'Dragon Dance',tp:'Dragon',rl:'Setup'}],
+       bt:'Mega Salamence (A-Tier) มี Aerilate เปลี่ยน Normal เป็น Flying + power boost Dragon Dance 1 ครั้งแล้วรัว Outrage กวาดได้เร็ว',
+       fm:'บินเร็ว Outrage กวาดศัตรู Dragon-weak ได้ไว'},
+  376:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Clear Body',ds:'Prevents stat reduction from opponents moves.'},
+       mv:[{nm:'Meteor Mash',tp:'Steel',rl:'STAB'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'},{nm:'Zen Headbutt',tp:'Psychic',rl:'Coverage'}],
+       bt:'Mega Metagross S-Tier Ranked มี Tough Claws บูสต์ contact moves Meteor Mash มีโอกาส +1 Atk สามารถจัดการ Gardevoir ที่ populate Ranked ได้ดี',
+       fm:'Steel/Psychic สู้ได้หลาย type จัดการ zone ยากๆ ได้ดี'},
+  445:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Rough Skin',ds:'Deals 1/8 HP damage to attacker on contact.'},
+       mv:[{nm:'Earthquake',tp:'Ground',rl:'STAB area'},{nm:'Dragon Claw',tp:'Dragon',rl:'STAB reliable'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'},{nm:'Iron Head',tp:'Steel',rl:'Anti-Fairy/Ice'}],
+       bt:'Garchomp Top-tier ทุก Season ของ Ranked Swords Dance แล้วกด Earthquake กวาดทั้ง arena Mega Garchomp ทำ Earthquake area กว้างมาก ใช้ Focus Sash/Adamant 252 Atk/Speed',
+       fm:'เร็วที่สุด Earthquake กวาด Ground-weak zone ได้ทั้งหมดใน 1 hit เหมาะ farm EXP เร็วที่สุด'},
+  448:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Steadfast',ds:'Raises Speed by 1 stage when flinched.'},
+       mv:[{nm:'Close Combat',tp:'Fighting',rl:'STAB powerful'},{nm:'Bullet Punch',tp:'Steel',rl:'Priority STAB'},{nm:'Crunch',tp:'Dark',rl:'Coverage'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'}],
+       bt:'Lucario Top-tier Story (Game8) Mega Lucario A-Tier มี Adaptability ทำให้ STAB x2 Bullet Punch priority + Close Combat กวาดได้ไว',
+       fm:'Bullet Punch priority จบศัตรูเร็วกว่า turn จัดการ group ได้ดี'},
+  530:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Sand Rush',ds:'Doubles Speed in sandstorm.'},
+       mv:[{nm:'Earthquake',tp:'Ground',rl:'STAB area'},{nm:'Iron Head',tp:'Steel',rl:'STAB reliable'},{nm:'Rock Slide',tp:'Rock',rl:'Coverage flinch'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'}],
+       bt:'Excadrill Top-tier Story (Game8) Sand Rush ใน Sandstorm Speed x2 ใช้ร่วม Tyranitar/Hippowdon Mega Excadrill S-Tier มี Mold Breaker',
+       fm:'ขุดดิน Dig ใน zone ได้เร็ว Earthquake กวาด group ได้ดี เหมาะ farm EXP'},
+  609:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Timid',up:'Speed',dn:'Atk'}],
+       ab:{nm:'Flash Fire',ds:'Immune to Fire moves. Activates to boost Fire moves by 50%.'},
+       mv:[{nm:'Shadow Ball',tp:'Ghost',rl:'STAB'},{nm:'Flamethrower',tp:'Fire',rl:'STAB coverage'},{nm:'Energy Ball',tp:'Grass',rl:'Coverage'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+       bt:'Mega Chandelure A-Tier มี Flash Fire + Ghost/Fire typing ที่ดีมาก Calm Mind setup แล้วกด Shadow Ball/Flamethrower ครอบคลุมกว้าง',
+       fm:'Flamethrower กวาด Bug/Grass/Steel ไว Ghost immunity ต่อ Normal/Fighting'},
+  612:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Mold Breaker',ds:'Ignores the effect of opponents ability.'},
+       mv:[{nm:'Outrage',tp:'Dragon',rl:'STAB nuke'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Poison Jab',tp:'Poison',rl:'Anti-Fairy'},{nm:'Dragon Dance',tp:'Dragon',rl:'Setup'}],
+       bt:'Haxorus Atk สูงมาก Dragon Dance ครั้งเดียวทำให้ Outrage one-shot ได้เกือบทุกอย่าง Mold Breaker ทะลุ Levitate/Sturdy',
+       fm:'Dragon Dance 1 ครั้งแล้วกวาด zone ได้เร็วมาก Outrage ทำลาย multi-target'},
+  658:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Torrent',ds:'Boosts Water moves by 50% when HP is below 1/3.'},
+       mv:[{nm:'Water Shuriken',tp:'Water',rl:'Priority multi-hit'},{nm:'Night Slash',tp:'Dark',rl:'STAB coverage'},{nm:'Extrasensory',tp:'Psychic',rl:'Coverage'},{nm:'U-Turn',tp:'Bug',rl:'Pivot/Escape'}],
+       bt:'Greninja (Water/Dark) ใช้ Water Shuriken priority multi-hit Mega Greninja B-Tier มี Battle Bond/Protean เปลี่ยน type ตาม move',
+       fm:'เร็วที่สุด Water-type Water Shuriken จบ Fire/Rock zone ได้ไวมาก'},
+  681:{natures:[{nm:'Quiet',up:'Sp.Atk',dn:'Speed'},{nm:'Brave',up:'Atk',dn:'Speed'}],
+       ab:{nm:'Stance Change',ds:'Switches between Shield Forme and Blade Forme based on moves used.'},
+       mv:[{nm:'Sacred Sword',tp:'Fighting',rl:'STAB ignores buffs'},{nm:'Shadow Sneak',tp:'Ghost',rl:'STAB priority'},{nm:'Kings Shield',tp:'Steel',rl:'Defense + Stance'},{nm:'Shadow Ball',tp:'Ghost',rl:'Special STAB'}],
+       bt:'Aegislash Stance Change เปลี่ยน Shield/Blade อัตโนมัติ Kings Shield ตอบ contact attack ด้วย -2 Atk Sacred Sword bypass Def buffs ของ opponent',
+       fm:'ใช้ Shield form ทน hit แล้วโจมตีสลับ เหมาะ farm zone ที่มี Ghost/Dragon/Fairy'},
+  700:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Calm',up:'Sp.Def',dn:'Atk'}],
+       ab:{nm:'Pixilate',ds:'Turns Normal-type moves into Fairy and boosts power by 20%.'},
+       mv:[{nm:'Hyper Voice',tp:'Normal',rl:'→Fairy via Pixilate'},{nm:'Moonblast',tp:'Fairy',rl:'STAB'},{nm:'Shadow Ball',tp:'Ghost',rl:'Coverage'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+       bt:'Sylveon Pixilate ทำให้ Hyper Voice กลายเป็น Fairy ทะลุ Substitute Sp.Def สูง + Calm Mind ทำให้ทนและโจมตีได้',
+       fm:'Moonblast จบ Dark/Dragon/Fighting ง่าย Hyper Voice กวาด multi-target'},
+  716:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Fairy Aura',ds:'Powers up Fairy-type moves for all Pokemon on the field by 33%.'},
+       mv:[{nm:'Moonblast',tp:'Fairy',rl:'STAB + Fairy Aura'},{nm:'Geomancy',tp:'Fairy',rl:'+2 SpA/SpD/Speed'},{nm:'Thunderbolt',tp:'Electric',rl:'Coverage'},{nm:'Focus Blast',tp:'Fighting',rl:'Coverage'}],
+       bt:'Xerneas S-Tier Legendary ใน Ranked Fairy Aura บูสต์ Moonblast ให้แรงมาก Geomancy +2 ทุก stat พิเศษ แทบสู้ไม่ได้ถ้า setup ได้',
+       fm:'Moonblast กวาด Dark/Dragon zone ได้อย่างสบาย Geomancy ครั้งเดียวจบ zone ยากๆ'},
+  717:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Dark Aura',ds:'Powers up Dark-type moves for all Pokemon on the field by 33%.'},
+       mv:[{nm:'Oblivion Wing',tp:'Flying',rl:'STAB + drain HP 75%'},{nm:'Dark Pulse',tp:'Dark',rl:'STAB + Dark Aura'},{nm:'Sucker Punch',tp:'Dark',rl:'Priority STAB'},{nm:'Disable',tp:'Normal',rl:'Utility'}],
+       bt:'Yveltal S-Tier Ranked Oblivion Wing ดูด HP กลับ 75% Dark Aura บูสต์ Dark moves ทั้ง field Sucker Punch priority ตอบ setup Pokemon',
+       fm:'บินข้าม zone ได้ Oblivion Wing heal ระหว่าง fight เหมาะ farm zone ยากๆ โดยไม่ต้อง heal'},
+  384:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Air Lock',ds:'Negates all weather effects on the field.'},
+       mv:[{nm:'Outrage',tp:'Dragon',rl:'STAB nuke'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Extreme Speed',tp:'Normal',rl:'Priority'},{nm:'Dragon Dance',tp:'Dragon',rl:'Setup'}],
+       bt:'Rayquaza Dragon/Flying ไม่โดน Ground Dragon Dance แล้วรัว Extreme Speed priority Mega Rayquaza ไม่ต้องถือ Mega Stone',
+       fm:'บินข้าม zone ได้ทั้งหมด Air Lock ยกเลิก weather เหมาะ farm ทุก zone'},
+  // ── Gen I additions ──
+  59:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+      ab:{nm:'Intimidate',ds:'Lowers opponent Attack by 1 stage on entry. Great for support role.'},
+      mv:[{nm:'Flare Blitz',tp:'Fire',rl:'STAB powerful'},{nm:'Extreme Speed',tp:'Normal',rl:'Priority'},{nm:'Close Combat',tp:'Fighting',rl:'Coverage'},{nm:'Wild Charge',tp:'Electric',rl:'Coverage'}],
+      bt:'Arcanine ใช้งานได้ดีมากใน Pokemon Champions S1 มี Intimidate + Flash Fire เป็น support pivot ที่ดี Extreme Speed priority + Flare Blitz กวาดศัตรูได้ไว',
+      fm:'Intimidate ลด Atk ศัตรูทันทีเมื่อเข้าสนาม เหมาะ lead เพื่อลด damage intake ของทีม'},
+  62:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Brave',up:'Atk',dn:'Speed'}],
+      ab:{nm:'Swift Swim',ds:'Doubles Speed in rain.'},
+      mv:[{nm:'Waterfall',tp:'Water',rl:'STAB'},{nm:'Close Combat',tp:'Fighting',rl:'STAB dual'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'},{nm:'Bulk Up',tp:'Fighting',rl:'Setup'}],
+      bt:'Poliwrath Water/Fighting Bulk Up แล้วรัว Waterfall + Close Combat Swift Swim ใน Rain ทำให้เร็วมาก ใช้ร่วมกับ Politoed',
+      fm:'Bulk Up ครั้งเดียวแล้วสู้ได้นาน Close Combat กวาด Dark/Rock/Steel ได้ดี'},
+  68:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Brave',up:'Atk',dn:'Speed'}],
+      ab:{nm:'No Guard',ds:'Both user and target cannot miss moves.'},
+      mv:[{nm:'Dynamic Punch',tp:'Fighting',rl:'STAB 100% confuse'},{nm:'Stone Edge',tp:'Rock',rl:'Coverage never miss'},{nm:'Thunder Punch',tp:'Electric',rl:'Coverage'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'}],
+      bt:'Machamp No Guard ทำให้ Dynamic Punch (100% confuse) ไม่พลาดเลย Stone Edge + Thunder Punch ก็ไม่พลาดด้วย Physical powerhouse ที่ดีมาก',
+      fm:'Dynamic Punch สับสนศัตรูทุกตัวโดยไม่พลาด ทำให้ farm ได้ง่ายมากขึ้น'},
+  131:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Calm',up:'Sp.Def',dn:'Atk'}],
+       ab:{nm:'Water Absorb',ds:'Restores HP when hit by Water-type moves.'},
+       mv:[{nm:'Surf',tp:'Water',rl:'STAB area'},{nm:'Ice Beam',tp:'Ice',rl:'STAB coverage'},{nm:'Thunderbolt',tp:'Electric',rl:'Coverage'},{nm:'Rest',tp:'Psychic',rl:'Recovery'}],
+       bt:'Lapras Water/Ice Bulky Special Attacker HP สูงมาก Water Absorb heal จาก Water moves Rest + Chesto Berry ฟื้นเต็ม ใช้ Shell Smash ก็ได้ถ้าต้องการ sweep',
+       fm:'HP สูง ทนทาน ใช้ Surf กวาด zone ที่มี Fire/Ground/Rock ได้ดี ไม่ต้อง heal บ่อย'},
+  // ── Gen II additions ──
+  154:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Bold',up:'Def',dn:'Atk'}],
+       ab:{nm:'Mega Sol (Mega)',ds:'Uses moves as if harsh sunlight is present. Solar Beam is always 1-turn. Weather Ball becomes Fire-type.'},
+       mv:[{nm:'Solar Beam',tp:'Grass',rl:'STAB 1-turn via Mega Sol'},{nm:'Weather Ball',tp:'Normal',rl:'Fire-type via Mega Sol'},{nm:'Synthesis',tp:'Grass',rl:'Full recovery'},{nm:'Ancient Power',tp:'Rock',rl:'Coverage'}],
+       bt:'Mega Meganium มี Mega Sol ทำให้ Solar Beam เป็น 1-turn เสมอ Weather Ball กลายเป็น Fire ทุกสภาพอากาศ ใน Pokemon Champions ถือว่าเป็น Mega ที่แข็งแกร่งมาก',
+       fm:'Solar Beam 1-turn โดยไม่ต้องการแดด ทำให้กวาดศัตรูได้เร็ว Synthesis ฟื้น HP กลับเต็ม'},
+  181:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Timid',up:'Speed',dn:'Atk'}],
+       ab:{nm:'Static',ds:'30% chance to paralyze attacker on contact.'},
+       mv:[{nm:'Thunderbolt',tp:'Electric',rl:'STAB reliable'},{nm:'Dragon Pulse',tp:'Dragon',rl:'Coverage'},{nm:'Focus Blast',tp:'Fighting',rl:'Coverage'},{nm:'Cotton Guard',tp:'Grass',rl:'Defense +3'}],
+       bt:'Mega Ampharos (A-Tier Legends Z-A) Electric/Dragon typing ไม่มีจุดอ่อน Ground ในระบบ double battle ใช้ Dragon Pulse กวาด Dragon-type ได้ดี Mold Breaker ทะลุ abilities',
+       fm:'Cotton Guard บูสต์ Def +3 ทำให้ทนมากขึ้น ใช้ Thunderbolt กวาด Water/Flying zone ได้ไว'},
+  212:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Technician',ds:'Boosts moves with 60 or less base power by 50%.'},
+       mv:[{nm:'Bullet Punch',tp:'Steel',rl:'Priority STAB Technician'},{nm:'Bug Bite',tp:'Bug',rl:'STAB Technician'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'},{nm:'Close Combat',tp:'Fighting',rl:'Coverage'}],
+       bt:'Mega Scizor Bug/Steel มี Technician บูสต์ Bullet Punch และ Bug Bite Swords Dance setup แล้วรัว priority Bullet Punch ทำลายได้ Roost ก็ดีถ้าต้องการ recovery',
+       fm:'Bullet Punch priority กวาดศัตรูเร็วมาก Swords Dance 1 ครั้งแล้วไม่มีอะไรทนได้'},
+  214:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Guts',ds:'Boosts Attack by 50% when inflicted with a status condition.'},
+       mv:[{nm:'Close Combat',tp:'Fighting',rl:'STAB powerful'},{nm:'Megahorn',tp:'Bug',rl:'STAB powerful'},{nm:'Stone Edge',tp:'Rock',rl:'Coverage'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'}],
+       bt:'Heracross Bug/Fighting Guts + Flame Orb/Toxic Orb ทำให้ Atk บูสต์ 50% Mega Heracross มี Skill Link ทำให้ multi-hit moves hit 5 ครั้งเสมอ',
+       fm:'Megahorn + Close Combat กวาดได้กว้างมาก Guts กับ status orb ทำให้แรงขึ้นอีก'},
+  // ── Gen III additions ──
+  302:{natures:[{nm:'Careful',up:'Sp.Def',dn:'Sp.Atk'},{nm:'Calm',up:'Sp.Def',dn:'Atk'}],
+       ab:{nm:'Prankster',ds:'Non-damaging moves gain +1 priority.'},
+       mv:[{nm:'Will-O-Wisp',tp:'Fire',rl:'Priority burn via Prankster'},{nm:'Foul Play',tp:'Dark',rl:'STAB uses enemy Atk'},{nm:'Recover',tp:'Normal',rl:'50% HP recovery'},{nm:'Taunt',tp:'Dark',rl:'Priority block setup'}],
+       bt:'Sableye Dark/Ghost มี Prankster ทำให้ Will-O-Wisp, Taunt ใช้ก่อน Mega Sableye มี Magic Bounce reflect status/hazard กลับ',
+       fm:'Will-O-Wisp burn ศัตรู Physical attacker ลด Atk 50% Recover ฟื้น HP ตัวเอง เหมาะ farm zone ยาก'},
+  350:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Bold',up:'Def',dn:'Atk'}],
+       ab:{nm:'Competitive',ds:'Raises Sp.Atk by 2 stages when a stat is lowered by opponent.'},
+       mv:[{nm:'Surf',tp:'Water',rl:'STAB area'},{nm:'Ice Beam',tp:'Ice',rl:'Coverage'},{nm:'Recover',tp:'Normal',rl:'50% HP recovery'},{nm:'Coil',tp:'Poison',rl:'Setup Atk/Def/Acc'}],
+       bt:'Milotic มี Competitive ทำให้ Sp.Atk +2 เมื่อ opponent ใช้ Intimidate ทำให้เป็น counter Incineroar ที่ดีมากใน Pokemon Champions Marvel Scale บูสต์ Def เมื่อมี status',
+       fm:'Recover + Marvel Scale ทำให้ทนทานมาก เหมาะ farm zone ที่มี Physical attacker'},
+  // ── Gen IV additions ──
+  392:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Naive',up:'Speed',dn:'Sp.Def'}],
+       ab:{nm:'Iron Fist',ds:'Boosts punching moves by 20%.'},
+       mv:[{nm:'Close Combat',tp:'Fighting',rl:'STAB'},{nm:'Flare Blitz',tp:'Fire',rl:'STAB coverage'},{nm:'Thunder Punch',tp:'Electric',rl:'Iron Fist boost'},{nm:'U-Turn',tp:'Bug',rl:'Pivot/Escape'}],
+       bt:'Infernape เร็วและ Atk/Sp.Atk ดี Iron Fist บูสต์ Thunder Punch ใช้ Flare Blitz + Close Combat STAB ทั้ง Fire และ Fighting U-Turn pivot ออกได้ไว',
+       fm:'Speed สูง ใช้ Flare Blitz กวาด Grass/Ice/Steel ได้เร็วมาก Close Combat จบ Dark/Rock'},
+  395:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Calm',up:'Sp.Def',dn:'Atk'}],
+       ab:{nm:'Torrent',ds:'Boosts Water moves by 50% when HP is below 1/3.'},
+       mv:[{nm:'Surf',tp:'Water',rl:'STAB area'},{nm:'Flash Cannon',tp:'Steel',rl:'STAB coverage'},{nm:'Ice Beam',tp:'Ice',rl:'Coverage'},{nm:'Agility',tp:'Psychic',rl:'Speed +2'}],
+       bt:'Empoleon Water/Steel มีจุดอ่อนน้อยมาก (Electric และ Fighting/Ground เท่านั้น) Agility บูสต์ Speed แล้วกวาด Defiant บูสต์ Atk เมื่อ opponent ลด stat',
+       fm:'Typing ดีมาก ทนต่อหลาย type ใช้ Surf กวาด area ได้ดี'},
+  450:{natures:[{nm:'Impish',up:'Def',dn:'Sp.Atk'},{nm:'Careful',up:'Sp.Def',dn:'Sp.Atk'}],
+       ab:{nm:'Sand Stream',ds:'Summons Sandstorm on entry.'},
+       mv:[{nm:'Earthquake',tp:'Ground',rl:'STAB area'},{nm:'Slack Off',tp:'Normal',rl:'50% HP recovery'},{nm:'Stealth Rock',tp:'Rock',rl:'Entry hazard'},{nm:'Yawn',tp:'Normal',rl:'Force switch/sleep'}],
+       bt:'Hippowdon Ground ใน Pokemon Champions ใช้เป็น lead ตั้ง Sand + Stealth Rock ได้พร้อมกัน Yawn บังคับให้ opponent switch Slack Off ฟื้น HP ทำให้ทนมาก',
+       fm:'Lead ตั้ง Stealth Rock + Yawn บังคับ switch เหมาะ farm หลาย zone ด้วย Earthquake'},
+  462:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Timid',up:'Speed',dn:'Atk'}],
+       ab:{nm:'Magnet Pull',ds:'Prevents Steel-type opponents from switching out.'},
+       mv:[{nm:'Thunderbolt',tp:'Electric',rl:'STAB reliable'},{nm:'Flash Cannon',tp:'Steel',rl:'STAB coverage'},{nm:'Volt Switch',tp:'Electric',rl:'Pivot'},{nm:'Hidden Power Ice',tp:'Ice',rl:'Coverage'}],
+       bt:'Magnezone Electric/Steel มี Magnet Pull กัก Steel-type ไว้ได้ ใช้ trap Skarmory/Ferrothorn ที่เป็น counter ของหลาย Pokemon ได้ดีมาก',
+       fm:'Volt Switch pivot ออกได้ไว Thunderbolt กวาด Water/Flying zone ได้ดี'},
+  // ── Gen V additions ──
+  500:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Brave',up:'Atk',dn:'Speed'}],
+       ab:{nm:'Reckless',ds:'Boosts moves with recoil damage by 20%.'},
+       mv:[{nm:'Flare Blitz',tp:'Fire',rl:'STAB Reckless boost'},{nm:'Wild Charge',tp:'Electric',rl:'Reckless boost'},{nm:'Hammer Arm',tp:'Fighting',rl:'STAB powerful'},{nm:'Head Smash',tp:'Rock',rl:'Reckless coverage'}],
+       bt:'Emboar Reckless บูสต์ Flare Blitz, Wild Charge, Head Smash Mold Breaker (Mega) ทะลุ ability ศัตรู Atk สูงมาก ใช้ Hammer Arm + Flare Blitz เป็น dual-STAB',
+       fm:'Reckless ทำให้ recoil moves แรงขึ้น Flare Blitz กวาด Grass/Steel/Ice ได้เร็ว แม้จะเสีย HP บ้าง'},
+  534:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Brave',up:'Atk',dn:'Speed'}],
+       ab:{nm:'Guts',ds:'Boosts Attack by 50% when inflicted with a status condition.'},
+       mv:[{nm:'Drain Punch',tp:'Fighting',rl:'STAB + lifesteal'},{nm:'Knock Off',tp:'Dark',rl:'Remove item'},{nm:'Mach Punch',tp:'Fighting',rl:'Priority STAB'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'}],
+       bt:'Conkeldurr Guts + Flame Orb ทำให้ Atk บูสต์ 50% Drain Punch lifesteal HP กลับมา Mach Punch priority ตอบ sweeper เร็ว ใน Pokemon Champions S1 Conkeldurr เป็น counter Tyranitar ที่ดีมาก',
+       fm:'Drain Punch ฟื้น HP ทำให้สู้ได้นาน Guts บวก status ทำให้แข็งแกร่งขึ้น'},
+  571:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Illusion',ds:'Disguises as last Pokemon in party until hit by an attack.'},
+       mv:[{nm:'Night Slash',tp:'Dark',rl:'STAB high crit'},{nm:'Flamethrower',tp:'Fire',rl:'Coverage'},{nm:'Focus Blast',tp:'Fighting',rl:'Coverage'},{nm:'Nasty Plot',tp:'Dark',rl:'Setup'}],
+       bt:'Zoroark มี Illusion หลอก opponent ให้คิดว่าเป็น Pokemon ตัวอื่น ทำให้ set ดีมาก Nasty Plot setup แล้วกด Flamethrower/Focus Blast',
+       fm:'Illusion หลอกศัตรู wild ได้ด้วย ทำให้เข้าถึงได้ง่ายขึ้น Night Slash crit rate สูงจบเร็ว'},
+  // ── Gen VI additions ──
+  655:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Magician',ds:'Steals the held item of a target hit by this Pokemon.'},
+       mv:[{nm:'Fire Blast',tp:'Fire',rl:'STAB powerful'},{nm:'Psyshock',tp:'Psychic',rl:'STAB hits Def'},{nm:'Shadow Ball',tp:'Ghost',rl:'Coverage'},{nm:'Trick',tp:'Psychic',rl:'Swap items'}],
+       bt:'Mega Delphox (S-Tier Pokemon Champions) มี Levitate ไม่โดน Ground อีกต่อไป Speed สูง Sp.Atk ดีมาก Fire Blast + Psyshock ครอบคลุม Trick ส่ง Choice item ให้ opponent',
+       fm:'Levitate ทำให้ไม่โดน Earthquake ของ wild/trainer เลย Fire Blast กวาด Bug/Grass/Steel ไว'},
+  // ── Gen VII additions ──
+  727:{natures:[{nm:'Careful',up:'Sp.Def',dn:'Sp.Atk'},{nm:'Sassy',up:'Sp.Def',dn:'Speed'}],
+       ab:{nm:'Intimidate',ds:'Lowers opponent Attack by 1 stage on entry.'},
+       mv:[{nm:'Fake Out',tp:'Normal',rl:'Priority flinch turn 1'},{nm:'Knock Off',tp:'Dark',rl:'STAB remove item'},{nm:'Flare Blitz',tp:'Fire',rl:'STAB powerful'},{nm:'Parting Shot',tp:'Dark',rl:'Debuff + pivot'}],
+       bt:'Incineroar S-Tier ใน Pokemon Champions Season M-1 King of VGC Intimidate ลด Atk ทันที Fake Out หยุด turn 1 Parting Shot ลด Atk+Sp.Atk แล้ว pivot ออก รองรับทุก team archetype',
+       fm:'Intimidate ลด damage ให้ทีม Fake Out ให้ partner ลงมือก่อน Parting Shot pivot เข้า Pokemon ที่ต้องการได้'},
+  730:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Timid',up:'Speed',dn:'Atk'}],
+       ab:{nm:'Liquid Voice',ds:'All sound-based moves become Water-type.'},
+       mv:[{nm:'Hyper Voice',tp:'Normal',rl:'->Water via Liquid Voice'},{nm:'Moonblast',tp:'Fairy',rl:'STAB'},{nm:'Psychic',tp:'Psychic',rl:'Coverage'},{nm:'Sparkling Aria',tp:'Water',rl:'STAB heal burns'}],
+       bt:'Primarina Water/Fairy Liquid Voice ทำให้ Hyper Voice กลายเป็น Water ทะลุ Substitute Moonblast จบ Dragon/Dark ได้ดี Sp.Atk และ Sp.Def สูง',
+       fm:'Hyper Voice เป็น Water area กวาด Fire/Rock/Ground ได้กว้าง Sp.Def สูงทนได้นาน'},
+  747:{natures:[{nm:'Bold',up:'Def',dn:'Atk'},{nm:'Calm',up:'Sp.Def',dn:'Atk'}],
+       ab:{nm:'Merciless',ds:'Deals critical hits to poisoned opponents.'},
+       mv:[{nm:'Toxic Spikes',tp:'Poison',rl:'Lay poison hazard'},{nm:'Baneful Bunker',tp:'Poison',rl:'Protect + poison contact'},{nm:'Scald',tp:'Water',rl:'30% burn chance'},{nm:'Recover',tp:'Normal',rl:'Recovery'}],
+       bt:'Toxapex Poison/Water Defensive wall ที่แข็งแกร่ง Regenerator ฟื้น HP เมื่อ switch out Baneful Bunker poison contact attacker Scald มีโอกาส burn',
+       fm:'Toxic Spikes ตั้ง hazard ทำให้ wild Pokemon poison อัตโนมัติ Regenerator ฟื้น HP ทุกครั้งที่ switch'},
+  // ── Gen VIII additions ──
+  823:{natures:[{nm:'Impish',up:'Def',dn:'Sp.Atk'},{nm:'Careful',up:'Sp.Def',dn:'Sp.Atk'}],
+       ab:{nm:'Pressure',ds:'Forces opponents to use 2 PP per move.'},
+       mv:[{nm:'Brave Bird',tp:'Flying',rl:'STAB powerful'},{nm:'Body Press',tp:'Fighting',rl:'Uses Def as Atk'},{nm:'Roost',tp:'Flying',rl:'Recovery'},{nm:'Stealth Rock',tp:'Rock',rl:'Entry hazard'}],
+       bt:'Mega Corviknight (S-Tier Legends Z-A) Flying/Steel ทน Poison/Ground/Bug ดีมาก Body Press ใช้ Def สูงในการโจมตี Brave Bird + Stealth Rock lead ได้ดีมาก',
+       fm:'Stealth Rock ทุก switch เสีย HP Body Press ยิ่ง Def สูง ยิ่งแรง Roost ฟื้น HP ระหว่าง farm'},
+  887:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Clear Body',ds:'Prevents stat reduction from opponent moves or abilities.'},
+       mv:[{nm:'Dragon Darts',tp:'Dragon',rl:'STAB dual-target'},{nm:'Shadow Ball',tp:'Ghost',rl:'STAB coverage'},{nm:'Flamethrower',tp:'Fire',rl:'Coverage'},{nm:'U-Turn',tp:'Bug',rl:'Pivot/Escape'}],
+       bt:'Dragapult Dragon/Ghost ใน Pokemon Champions Clear Body ไม่โดน Intimidate จาก Incineroar Ghost type ทำให้ immune ต่อ Fake Out U-Turn pivot เข้าออกได้ไว Speed สูงมาก',
+       fm:'Clear Body ป้องกัน stat drop ทำให้ farm ได้ต่อเนื่อง Dragon Darts hit 2 targets ใน Double battles'},
+  // ── Gen IX additions ──
+  983:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Careful',up:'Sp.Def',dn:'Sp.Atk'}],
+       ab:{nm:'Supreme Overlord',ds:'Boosts Attack by 10% for each fainted teammate (up to 50%).'},
+       mv:[{nm:'Kowtow Cleave',tp:'Dark',rl:'STAB never miss'},{nm:'Sucker Punch',tp:'Dark',rl:'Priority STAB'},{nm:'Iron Head',tp:'Steel',rl:'STAB anti-Fairy'},{nm:'Protect',tp:'Normal',rl:'Scout/Safety'}],
+       bt:'Kingambit Dark/Steel ใน Pokemon Champions S1 Supreme Overlord +10% Atk ต่อ teammate ที่ล้ม Defiant +2 Atk เมื่อ Intimidate โดน Kowtow Cleave ไม่พลาดเลย late-game sweeper ที่ทรงพลัง',
+       fm:'Sucker Punch priority จบ low HP เร็ว Iron Head anti-Fairy ที่แพ้ Dark เป็น solid damage dealer'},
+  964:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Zero to Hero',ds:'Transforms into Hero Form permanently after switching out once.'},
+       mv:[{nm:'Jet Punch',tp:'Water',rl:'Priority STAB powerful'},{nm:'Wave Crash',tp:'Water',rl:'STAB area'},{nm:'Drain Punch',tp:'Fighting',rl:'Coverage + lifesteal'},{nm:'Bulk Up',tp:'Fighting',rl:'Setup'}],
+       bt:'Palafin ใน Pokemon Champions หลัง Zero to Hero (Hero Form) มี BST 650 Jet Punch priority ที่แรงมาก Bulk Up + Leftovers ทำให้อยู่ได้นาน เป็น Pokemon ที่ได้รับฟรีและแข็งแกร่งมาก',
+       fm:'Jet Punch priority กวาดศัตรู low HP ได้เร็ว Drain Punch ฟื้น HP ทำให้ farm ยาวได้'},
+  1000:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Timid',up:'Speed',dn:'Atk'}],
+        ab:{nm:'Good as Gold',ds:'Full immunity to all status moves.'},
+        mv:[{nm:'Make It Rain',tp:'Steel',rl:'STAB multi-target'},{nm:'Shadow Ball',tp:'Ghost',rl:'STAB coverage'},{nm:'Nasty Plot',tp:'Dark',rl:'Setup +2 Sp.Atk'},{nm:'Recover',tp:'Normal',rl:'Recovery'}],
+        bt:'Gholdengo Steel/Ghost มี Good as Gold ทำให้ immune ต่อ status moves ทั้งหมด Nasty Plot +2 Sp.Atk แล้วกด Make It Rain ทำลายทุกอย่าง ใน Champions meta เคลื่อนที่เร็วมากด้วย',
+        fm:'Good as Gold ทำให้ไม่โดน status จาก wild ลด risk มาก Make It Rain กวาด multi-target ได้ดี'},
+  547:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Bold',up:'Def',dn:'Atk'}],
+       ab:{nm:'Prankster',ds:'Non-damaging moves gain +1 priority.'},
+       mv:[{nm:'Tailwind',tp:'Flying',rl:'Priority speed boost team'},{nm:'Moonblast',tp:'Fairy',rl:'STAB'},{nm:'Encore',tp:'Normal',rl:'Priority lock moves'},{nm:'Stun Spore',tp:'Grass',rl:'Priority paralyze'}],
+       bt:'Whimsicott Grass/Fairy ใน Pokemon Champions A-Tier Prankster ทำให้ Tailwind, Encore, Stun Spore ใช้ก่อนทุกคน รองรับทีม offense ด้วย Tailwind speed boost ได้ดีมาก',
+       fm:'Prankster Tailwind ทำให้ทีมเร็วขึ้น 2 เท่า 4 turns Encore ล็อค wild Pokemon ให้ใช้ move เดิม'},
+  858:{natures:[{nm:'Quiet',up:'Sp.Atk',dn:'Speed'},{nm:'Sassy',up:'Sp.Def',dn:'Speed'}],
+       ab:{nm:'Magic Bounce',ds:'Reflects status moves, entry hazards, and certain other moves back to the user.'},
+       mv:[{nm:'Psychic',tp:'Psychic',rl:'STAB'},{nm:'Dazzling Gleam',tp:'Fairy',rl:'STAB multi-target'},{nm:'Trick Room',tp:'Psychic',rl:'Reverse speed order'},{nm:'Nuzzle',tp:'Electric',rl:'Paralyze support'}],
+       bt:'Hatterene Psychic/Fairy ใน Pokemon Champions ใช้ Trick Room ให้ slow Pokemon ลงมือก่อน Magic Bounce reflect hazard กลับ Sp.Atk สูงมากจาก Calm Mind/Sp.Def spread',
+       fm:'Magic Bounce reflect Spore/toxic/status จาก wild Trick Room ทำให้ Trick Room team ทำงานได้'},
+  // ── Extra ──
+  130:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Intimidate',ds:'Lowers opponent Attack by 1 stage on entry. Mega: Mold Breaker.'},
+       mv:[{nm:'Waterfall',tp:'Water',rl:'STAB physical'},{nm:'Earthquake',tp:'Ground',rl:'Coverage'},{nm:'Ice Fang',tp:'Ice',rl:'Coverage'},{nm:'Dragon Rush',tp:'Dragon',rl:'Power move evade'}],
+       bt:'Mega Gyarados (S-Tier Legends Z-A) Water/Dark ใช้ Waterfall + Earthquake ทำลายกลุ่มศัตรู Dragon Rush หลบหลีกและโจมตี Mold Breaker ignore abilities',
+       fm:'ว่ายน้ำข้าม zone ได้ไว Waterfall กวาด Fire/Rock/Ground ง่ายมาก'},
+  // ── SV Starters ──
+  908:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Overgrow / Protean',ds:'Overgrow: Boosts Grass moves at low HP. Protean (HA): Changes type to match every move used.'},
+       mv:[{nm:'Flower Trick',tp:'Grass',rl:'STAB always crits'},{nm:'Knock Off',tp:'Dark',rl:'STAB remove item'},{nm:'U-Turn',tp:'Bug',rl:'Pivot/Escape'},{nm:'Sucker Punch',tp:'Dark',rl:'Priority STAB'}],
+       bt:'Meowscarada Grass/Dark Speed สูงมาก Flower Trick always critical hit และ bypass Protect Protean (HA) เปลี่ยน type ตาม move Knock Off + Sucker Punch ทำให้ unpredictable',
+       fm:'Flower Trick crit ทุกครั้ง ไม่พลาด จบ wild ได้ไวมาก U-Turn pivot ออกได้เร็ว'},
+  911:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Bold',up:'Def',dn:'Atk'}],
+       ab:{nm:'Torch Song',ds:'Signature: boosts Sp.Atk +1 after each use.'},
+       mv:[{nm:'Torch Song',tp:'Fire',rl:'STAB +Sp.Atk each use'},{nm:'Shadow Ball',tp:'Ghost',rl:'STAB coverage'},{nm:'Slack Off',tp:'Normal',rl:'Recovery 50% HP'},{nm:'Will-O-Wisp',tp:'Fire',rl:'Burn physical attackers'}],
+       bt:'Skeledirge Fire/Ghost Torch Song บูสต์ Sp.Atk ทุกครั้งที่ใช้ Slack Off ฟื้น HP Unaware ไม่สนใจ opponent stat boost เป็น bulky special attacker ที่แข็งมาก',
+       fm:'Torch Song บวก Sp.Atk ทุกตัว Will-O-Wisp burn physical attacker Slack Off ทำให้ farm ได้นานโดยไม่ต้อง heal'},
+  914:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Moxie',ds:'Raises Attack by 1 stage after KOing an opponent.'},
+       mv:[{nm:'Aqua Step',tp:'Water',rl:'STAB +Speed each use'},{nm:'Close Combat',tp:'Fighting',rl:'STAB powerful'},{nm:'Ice Spinner',tp:'Ice',rl:'Coverage remove terrain'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'}],
+       bt:'Quaquaval Water/Fighting Moxie +1 Atk ทุก KO Aqua Step +Speed เมื่อใช้ snowball ได้เร็วมาก Ice Spinner remove terrain ด้วย Close Combat แรงมาก',
+       fm:'Aqua Step + Moxie ทำให้ยิ่งสู้ยิ่งเร็วและแรง Swords Dance ครั้งเดียว sweep ได้ทั้ง zone'},
+  // ── SV Paradox & New Pokemon ──
+  987:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+       ab:{nm:'Protosynthesis',ds:'Boosts highest stat by 30% (50% if Speed) in harsh sunlight or with Booster Energy.'},
+       mv:[{nm:'Moonblast',tp:'Fairy',rl:'STAB spread'},{nm:'Shadow Ball',tp:'Ghost',rl:'STAB coverage'},{nm:'Dazzling Gleam',tp:'Fairy',rl:'STAB spread doubles'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+       bt:'Flutter Mane Ghost/Fairy ใน SV meta Protosynthesis + Booster Energy บูสต์ Speed 50% Moonblast + Shadow Ball dual-STAB กวางได้เกือบทุกอย่าง Choice Specs บูสต์ Sp.Atk 50%',
+       fm:'Protosynthesis ทำให้เร็วมาก ใช้ Dazzling Gleam กวาด multi-target Sp.Def ต่ำ ระวังโดน priority'},
+  992:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Brave',up:'Atk',dn:'Speed'}],
+       ab:{nm:'Quark Drive',ds:'Boosts highest stat by 30% (50% if Speed) in Electric Terrain or with Booster Energy.'},
+       mv:[{nm:'Drain Punch',tp:'Fighting',rl:'STAB lifesteal'},{nm:'Fake Out',tp:'Normal',rl:'Priority flinch'},{nm:'Ice Punch',tp:'Ice',rl:'Coverage'},{nm:'Thunder Punch',tp:'Electric',rl:'STAB coverage'}],
+       bt:'Iron Hands Fighting/Electric ใน SV meta Quark Drive + Electric Terrain (Miraidon) บูสต์ Atk HP สูงมาก Drain Punch ฟื้น HP Belly Drum + Drain Punch ใน Tera Raid ทรงพลังมาก',
+       fm:'HP สูงมาก ทนทาน Drain Punch ฟื้น HP ระหว่าง farm ใช้ Fake Out interrupt wild attacks'},
+  979:{natures:[{nm:'Careful',up:'Sp.Def',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Vital Spirit',ds:'Prevents sleep.'},
+       mv:[{nm:'Rage Fist',tp:'Ghost',rl:'STAB +50 power per hit taken'},{nm:'Drain Punch',tp:'Fighting',rl:'STAB lifesteal'},{nm:'Bulk Up',tp:'Fighting',rl:'Setup Atk+Def'},{nm:'Taunt',tp:'Dark',rl:'Block setup moves'}],
+       bt:'Annihilape Fighting/Ghost Rage Fist กำลังบวก +50 ทุกครั้งที่โดน hit Bulk Up + Drain Punch ทนทาน Taunt block opponent setup ใน SV เป็น Pokemon ที่ Tera Raid ดีมาก',
+       fm:'Rage Fist แรงขึ้นทุกครั้งที่โดน hit Drain Punch ฟื้น HP Bulk Up ทำให้ทนขึ้นด้วย'},
+  934:{natures:[{nm:'Impish',up:'Def',dn:'Sp.Atk'},{nm:'Bold',up:'Def',dn:'Atk'}],
+       ab:{nm:'Purifying Salt',ds:'Prevents status conditions. Halves damage from Ghost-type moves.'},
+       mv:[{nm:'Salt Cure',tp:'Rock',rl:'Chip 1/8 HP per turn'},{nm:'Body Press',tp:'Fighting',rl:'Uses Def as Atk'},{nm:'Iron Defense',tp:'Steel',rl:'Def +2'},{nm:'Recover',tp:'Normal',rl:'Recovery'}],
+       bt:'Garganacl Rock Purifying Salt immune ต่อ status Iron Defense + Body Press ยิ่ง Def สูง ยิ่ง Body Press แรง Salt Cure ทำให้ opponent เสีย HP ทุก turn ใน SV meta เป็น wall ที่แข็งมาก',
+       fm:'Salt Cure chip damage ทุก turn Recover ฟื้น HP Iron Defense ทำให้ทนมากขึ้น farm zone ที่มีหลาย type'},
+  998:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+       ab:{nm:'Thermal Exchange',ds:'Raises Attack by 1 when hit by Fire moves. Prevents burns.'},
+       mv:[{nm:'Glaive Rush',tp:'Dragon',rl:'STAB massive power'},{nm:'Ice Shard',tp:'Ice',rl:'STAB priority'},{nm:'Close Combat',tp:'Fighting',rl:'Coverage'},{nm:'Icicle Crash',tp:'Ice',rl:'STAB reliable'}],
+       bt:'Baxcalibur Dragon/Ice ใน SV Thermal Exchange ไม่โดน burn และ +1 Atk เมื่อโดน Fire Glaive Rush แรงมากแต่เสีย Def/Sp.Def หลังใช้ Ice Shard priority ตามทำ KO',
+       fm:'Glaive Rush ทำลาย Dragon/Flying ได้กว้างมาก Ice Shard priority จบ low HP ได้เร็ว'},
+  1007:{natures:[{nm:'Adamant',up:'Atk',dn:'Sp.Atk'},{nm:'Jolly',up:'Speed',dn:'Sp.Atk'}],
+        ab:{nm:'Orichalcum Pulse',ds:'Summons harsh sunlight on entry. Boosts Attack by 33% in sunlight.'},
+        mv:[{nm:'Collision Course',tp:'Fighting',rl:'STAB super effective x1.33'},{nm:'Flare Blitz',tp:'Fire',rl:'STAB sunlight boost'},{nm:'Dragon Claw',tp:'Dragon',rl:'Coverage'},{nm:'Bulk Up',tp:'Fighting',rl:'Setup'}],
+        bt:'Koraidon Fighting/Dragon Legendary ใน SV Orichalcum Pulse ตั้ง Sun + บูสต์ Atk 33% Collision Course แรงขึ้น 33% เมื่อ super effective Flare Blitz บวก Sun + Orichalcum ทรงพลังมาก',
+        fm:'Sun ทำให้ Flare Blitz แรงมาก Bulk Up setup ครั้งเดียวแล้ว KO ทุกอย่าง'},
+  1008:{natures:[{nm:'Timid',up:'Speed',dn:'Atk'},{nm:'Modest',up:'Sp.Atk',dn:'Atk'}],
+        ab:{nm:'Hadron Engine',ds:'Sets Electric Terrain on entry. Boosts Sp.Atk by 33% in Electric Terrain.'},
+        mv:[{nm:'Electro Drift',tp:'Electric',rl:'STAB super effective x1.33'},{nm:'Draco Meteor',tp:'Dragon',rl:'STAB nuke'},{nm:'Parabolic Charge',tp:'Electric',rl:'STAB drain HP'},{nm:'Calm Mind',tp:'Psychic',rl:'Setup'}],
+        bt:'Miraidon Electric/Dragon Legendary ใน SV Hadron Engine ตั้ง Electric Terrain + บูสต์ Sp.Atk 33% Electro Drift แรงขึ้น 33% เมื่อ super effective บูสต์ Iron Hands ด้วย Quark Drive',
+        fm:'Hadron Engine บูสต์ Sp.Atk อัตโนมัติ Parabolic Charge drain HP ระหว่าง farm Draco Meteor จบ Dragon zone ได้ไว'},
+  // ── SV more ──
+  959:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Mold Breaker',ds:'Ignores opponent ability when attacking.'},
+       mv:[{nm:'Gigaton Hammer',tp:'Steel',rl:'STAB massive 160 BP'},{nm:'Play Rough',tp:'Fairy',rl:'STAB coverage'},{nm:'Knock Off',tp:'Dark',rl:'Remove item'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'}],
+       bt:'Tinkaton Fairy/Steel Mold Breaker ทะลุ ability ศัตรู Gigaton Hammer 160 BP แต่ใช้ต่อเนื่องไม่ได้ Play Rough + Knock Off ครอบคลุมกว้าง Swords Dance setup',
+       fm:'Gigaton Hammer แรงมาก กวาด Rock/Ice ได้กว้าง Swords Dance ครั้งเดียวแล้ว one-shot เกือบทุกอย่าง'},
+  1004:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Timid',up:'Speed',dn:'Atk'}],
+        ab:{nm:'Beads of Ruin',ds:'Lowers Sp.Def of all other Pokemon on the field by 25%.'},
+        mv:[{nm:'Heat Wave',tp:'Fire',rl:'STAB spread doubles'},{nm:'Dark Pulse',tp:'Dark',rl:'STAB coverage'},{nm:'Overheat',tp:'Fire',rl:'STAB nuke'},{nm:'Protect',tp:'Normal',rl:'Scout/Safety'}],
+        bt:'Chi-Yu Fire/Dark Beads of Ruin ลด Sp.Def ทุกคน 25% ทำให้ Heat Wave แรงมากใน doubles Sun บูสต์ Fire moves อีก ใน SV Regulation G คู่ Koraidon ทรงพลังมาก',
+        fm:'Beads of Ruin ลด Sp.Def ศัตรู Heat Wave กวาด multi-target ได้ดี Dark Pulse จบ Psychic/Ghost'},
+  1002:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+        ab:{nm:'Sword of Ruin',ds:'Lowers Defense of all other Pokemon on the field by 25%.'},
+        mv:[{nm:'Sacred Sword',tp:'Fighting',rl:'STAB ignore Def buffs'},{nm:'Icicle Crash',tp:'Ice',rl:'STAB coverage'},{nm:'Sucker Punch',tp:'Dark',rl:'Priority STAB'},{nm:'Protect',tp:'Normal',rl:'Scout/Safety'}],
+        bt:'Chien-Pao Dark/Ice Sword of Ruin ลด Def ทุกคน 25% Sacred Sword bypass Def boost ของ opponent Sucker Punch priority ตาม KO Speed สูงมาก ใน SV Regulation G tier top',
+        fm:'Sacred Sword + Sword of Ruin กวาด Steel/Normal ได้กว้าง Speed สูงทำให้ลงมือก่อน'},
+  936:{natures:[{nm:'Modest',up:'Sp.Atk',dn:'Atk'},{nm:'Timid',up:'Speed',dn:'Atk'}],
+       ab:{nm:'Flash Fire',ds:'Immune to Fire moves. Activates to boost Fire moves by 50%.'},
+       mv:[{nm:'Armor Cannon',tp:'Fire',rl:'STAB signature high BP'},{nm:'Psyshock',tp:'Psychic',rl:'STAB hits Def'},{nm:'Aura Sphere',tp:'Fighting',rl:'Never miss coverage'},{nm:'Shadow Ball',tp:'Ghost',rl:'Coverage'}],
+       bt:'Armarouge Fire/Psychic Armor Cannon signature move แรงมาก Psyshock โจมตีผ่าน Sp.Def ของ opponent Flash Fire immune Fire + บูสต์ ใช้ใน Tera Raid กวาดได้ดีมาก',
+       fm:'Armor Cannon แรงมาก Aura Sphere ไม่พลาด Psyshock จบ Psychic/Poison/Fighting ได้ดี'},
+  937:{natures:[{nm:'Jolly',up:'Speed',dn:'Sp.Atk'},{nm:'Adamant',up:'Atk',dn:'Sp.Atk'}],
+       ab:{nm:'Flash Fire',ds:'Immune to Fire moves. Activates to boost Fire moves by 50%.'},
+       mv:[{nm:'Bitter Blade',tp:'Fire',rl:'STAB + drain HP'},{nm:'Shadow Claw',tp:'Ghost',rl:'STAB coverage'},{nm:'Close Combat',tp:'Fighting',rl:'Coverage'},{nm:'Swords Dance',tp:'Normal',rl:'Setup'}],
+       bt:'Ceruledge Fire/Ghost Bitter Blade drain HP กลับมา Shadow Claw + Close Combat ครอบคลุมกว้าง Swords Dance setup ครั้งเดียวแล้วรัว แข็งกว่า Armarouge ในด้าน Physical',
+       fm:'Bitter Blade ฟื้น HP ระหว่าง farm Swords Dance ครั้งเดียวทำให้แรงมาก Close Combat จบ Steel/Dark'},
+  980:{natures:[{nm:'Relaxed',up:'Def',dn:'Speed'},{nm:'Impish',up:'Def',dn:'Sp.Atk'}],
+       ab:{nm:'Water Absorb',ds:'Restores HP when hit by Water-type moves.'},
+       mv:[{nm:'Poison Jab',tp:'Poison',rl:'STAB'},{nm:'Earthquake',tp:'Ground',rl:'STAB area'},{nm:'Recover',tp:'Normal',rl:'Recovery'},{nm:'Toxic Spikes',tp:'Poison',rl:'Hazard'}],
+       bt:'Clodsire Poison/Ground Water Absorb immune Water + heal Unaware ไม่สนใจ opponent Atk boosts ใช้เป็น counter Miraidon/Flutter Mane ได้ดีมาก Toxic Spikes ทำให้ opponent เสีย HP',
+       fm:'Water Absorb heal จาก Water attacks Recover ฟื้น HP Toxic Spikes ทำให้ farm ได้เร็วขึ้น ไม่ต้อง attack'},
+  
+};
+
+
+function getStatColor(v){
+  if(v>=150)return'#5dcaa5';
+  if(v>=110)return'#5b8eff';
+  if(v>=80) return'#f5c518';
+  if(v>=60) return'#d4934a';
+  return'#e24b4a';
+}
+function statsHTML(id){
+  var s=BASE_STATS[id];
+  if(!s)return'<div class="nobuild"><span>📊</span>ไม่มีข้อมูล Base Stat สำหรับ Pokemon ตัวนี้</div>';
+  var labels=['HP','Attack','Defense','Sp.Atk','Sp.Def','Speed'];
+  var html='<div class="stat-grid">';
+  for(var i=0;i<6;i++){
+    var v=s[i];
+    var pct=Math.min(100,Math.round(v/255*100));
+    var col=getStatColor(v);
+    html+='<div class="stat-row">'
+      +'<span class="stat-lbl">'+labels[i]+'</span>'
+      +'<span class="stat-val">'+v+'</span>'
+      +'<div class="stat-bar-bg"><div class="stat-bar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>'
+      +'</div>';
+  }
+  html+='</div><div class="stat-total"><span class="stat-total-lbl">Total BST</span><span class="stat-total-val">'+s[6]+'</span></div>';
+  var ev=EV_YIELD[id];
+  if(ev&&ev.length>0){
+    var evNames=['HP','Attack','Defense','Sp.Atk','Sp.Def','Speed'];
+    var evColors=['#ff6b6a','#f5a832','#5b8eff','#e882b0','#5dcaa5','#5ec44a'];
+    html+='<div class="ev-section"><div class="ev-label">EV Yield</div><div class="ev-chips">';
+    ev.forEach(function(pair){
+      html+='<span class="ev-chip" style="background:'+evColors[pair[0]]+'">+'+pair[1]+' '+evNames[pair[0]]+'</span>';
+    });
+    html+='</div></div>';
+  }
+  return html;
+}
+
+function getBuild(id){return BUILDS[id]||null}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function tcol(t){return (TC[t]||{c:'#888'}).c}
+function tbg(t){return (TC[t]||{b:'#111'}).b}
+function numStr(n){return String(n).padStart(4,'0')}
+function sprite(id){return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/'+id+'.png'}
+
+function mkBadge(type,cls){
+  cls=cls||'tb';
+  return '<span class="'+cls+'" style="background:'+tcol(type)+';color:'+tbg(type)+'">'+type+'</span>';
+}
+
+function mkChip(type,cls){
+  cls=cls||'wc';
+  return '<span class="'+cls+'" style="background:'+tcol(type)+';color:'+tbg(type)+'">'+type+'</span>';
+}
+
+// ── WEAKNESS HTML ──────────────────────────────────────────────────────────
+function weaknessHTML(t1,t2){
+  var mu=calcMu(t1,t2);
+  var cats=[
+    {m:'×4',lbl:'4× Weak',cls:'wbox w4x',filter:function(m){return m===4}},
+    {m:'×2',lbl:'2× Weak',cls:'wbox w2x',filter:function(m){return m===2}},
+    {m:'½',lbl:'Resist',cls:'wbox wh',filter:function(m){return m===0.5}},
+    {m:'¼',lbl:'Double Resist',cls:'wbox wq',filter:function(m){return m===0.25}},
+    {m:'0',lbl:'Immune',cls:'wbox wi',filter:function(m){return m===0}},
+  ];
+  var html='<div class="wrow">';
+  cats.forEach(function(cat){
+    var ts=TYPES.filter(function(t){return cat.filter(mu[t])});
+    if(!ts.length)return;
+    html+='<div class="'+cat.cls+'"><div class="wbtit"><span class="wm">'+cat.m+'</span>'+cat.lbl+'</div><div class="wchips">'+ts.map(function(t){return mkChip(t,'wc')}).join('')+'</div></div>';
+  });
+  html+='</div>';
+  if(html==='<div class="wrow"></div>')html+='<div class="wrow"><span style="color:var(--mu);font-size:13px;padding:8px 0;display:block">ไม่มีจุดอ่อนพิเศษ</span></div>';
+  return html;
+}
+
+// ── BUILD HTML ─────────────────────────────────────────────────────────────
+function buildHTML(id){
+  var b=getBuild(id);
+  if(!b)return '<div class="nobuild"><span>📋</span>ยังไม่มีข้อมูล Build สำหรับ Pokemon ตัวนี้<br><small>รองรับ Pokemon หลักกว่า 30 ตัว</small></div>';
+  var natsH=b.natures.map(function(n){
+    return '<div class="natrow"><span class="natnm">'+n.nm+'</span><span class="nst nup">↑ '+n.up+'</span><span class="nst ndn">↓ '+n.dn+'</span></div>';
+  }).join('');
+  var mvsH=b.mv.map(function(m){
+    return '<div class="mvi"><span class="mvdot" style="background:'+tcol(m.tp)+'"></span><span class="mvnm">'+m.nm+'</span><span class="mvtp" style="background:'+tcol(m.tp)+';color:'+tbg(m.tp)+'">'+m.tp+'</span><span class="mvrl">'+m.rl+'</span></div>';
+  }).join('');
+  return [
+    '<div class="bsec"><div class="blbl">Best Natures</div>'+natsH+'</div>',
+    '<div class="bsec"><div class="blbl">Ability</div><div class="abbox"><div class="abnm">'+b.ab.nm+'</div><div class="abdsc">'+b.ab.ds+'</div></div></div>',
+    '<div class="bsec"><div class="blbl">Recommended Moveset</div><div class="mvlist">'+mvsH+'</div></div>',
+    '<div class="tipgrid">',
+    '<div class="tipbox bt"><strong>⚔️ Battle Tips</strong>'+b.bt+'</div>',
+    '<div class="tipbox fm"><strong>🌾 Farm Tips</strong>'+b.fm+'</div>',
+    '</div>'
+  ].join('');
+}
+
+// ── POKEDEX ────────────────────────────────────────────────────────────────
+var curFilter='', selPoke=null, searchT=null;
+
+// Build filter row
+var fr=document.getElementById('frow');
+fr.innerHTML='<div class="fp fall on" onclick="setFilter(\'\',this)">All</div>';
+TYPES.forEach(function(t){
+  fr.innerHTML+='<div class="fp" style="background:'+tcol(t)+';color:'+tbg(t)+'" onclick="setFilter(\''+t+'\',this)">'+t+'</div>';
+});
+
+function setFilter(type,el){
+  curFilter=type;
+  document.querySelectorAll('.fp').forEach(function(p){p.classList.remove('on')});
+  el.classList.add('on');
+  renderDex();
+}
+
+function doSearch(){
+  clearTimeout(searchT);
+  searchT=setTimeout(renderDex,80);
+}
+
+function renderDex(){
+  var q=(document.getElementById('dex-q').value||'').toLowerCase().trim();
+  var filtered=DEX.filter(function(p){
+    var matchQ=!q||p[1].toLowerCase().indexOf(q)>=0||String(p[0]).indexOf(q)>=0;
+    var matchT=!curFilter||(p[2]===curFilter||p[3]===curFilter);
+    return matchQ&&matchT;
+  });
+  document.getElementById('scnt').textContent=filtered.length?filtered.length+' found':'';
+  var grid=document.getElementById('pgrid');
+  var nores=document.getElementById('nores');
+  if(!filtered.length){grid.innerHTML='';nores.style.display='block';return}
+  nores.style.display='none';
+  var show=filtered.slice(0,120);
+  grid.innerHTML=show.map(function(p){
+    var id=p[0],name=p[1],t1=p[2],t2=p[3];
+    var sel=selPoke===id?'sel':'';
+    return '<div class="pc '+sel+'" onclick="selCard('+id+')">'
+      +'<div class="pnum">#'+numStr(id)+'</div>'
+      +'<img class="psp" src="'+sprite(id)+'" alt="'+name+'" onerror="this.style.display=\'none\'" loading="lazy">'
+      +'<div class="pnm">'+name+'</div>'
+      +'<div class="ptyp">'+mkBadge(t1)+(t2?mkBadge(t2):'')+'</div>'
+      +'</div>';
+  }).join('');
+  if(filtered.length>120){
+    grid.innerHTML+='<div style="grid-column:1/-1;text-align:center;padding:14px;color:var(--mu);font-size:13px">...และอีก '+(filtered.length-120)+' ตัว กรอกชื่อเพื่อค้นหาเพิ่ม</div>';
+  }
+}
+
+function selCard(id){
+  var poke=DEX.find(function(p){return p[0]===id});
+  if(!poke)return;
+  var det=document.getElementById('det');
+  if(selPoke===id){selPoke=null;det.classList.remove('on');renderDex();return}
+  selPoke=id;
+  var pid=poke[0],name=poke[1],t1=poke[2],t2=poke[3];
+  var hasBuild=!!getBuild(pid);
+
+  det.innerHTML=
+    '<div class="dhead">'
+      +'<img class="dsp" src="'+sprite(pid)+'" alt="'+name+'" onerror="this.style.display=\'none\'">'
+      +'<div class="dinfo">'
+        +'<div class="dnum">#'+numStr(pid)+'</div>'
+        +'<div class="dnm">'+name+'</div>'
+        +'<div class="dtyp">'+mkBadge(t1,'dtb')+(t2?mkBadge(t2,'dtb'):'')+'</div>'
+        +'<button class="chkbtn" onclick="sendChk(\''+t1+'\',\''+(t2||'')+'\')">⚔️ Type Checker</button>'
+      +'</div>'
+    +'</div>'
+    +'<div class="btabs">'
+      +'<div class="btt on" onclick="swBTab(\'w\',this)">🛡️ Weakness</div>'
+      +'<div class="btt" onclick="swBTab(\'s\',this)">📊 Base Stats</div>'
+      +'<div class="btt" onclick="swBTab(\'b\',this)">'+(hasBuild?'⚔️ Best Build':'📋 Build (N/A)')+'</div>'
+    +'</div>'
+    +'<div class="bpanel on" id="bpW">'+weaknessHTML(t1,t2)+'</div>'
+    +'<div class="bpanel" id="bpS">'+statsHTML(pid)+'</div>'
+    +'<div class="bpanel" id="bpB">'+buildHTML(pid)+'</div>';
+
+  // inject close button
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'det-close';
+  closeBtn.textContent = 'X Close';
+  closeBtn.onclick = function(){ selPoke=null; det.classList.remove('on'); renderDex(); };
+  det.appendChild(closeBtn);
+
+  det.classList.add('on');
+  det.scrollIntoView({behavior:'smooth',block:'nearest'});
+  renderDex();
+}
+
+function swBTab(tab,el){
+  var det=document.getElementById('det');
+  det.querySelectorAll('.btt').forEach(function(t){t.classList.remove('on')});
+  det.querySelectorAll('.bpanel').forEach(function(p){p.classList.remove('on')});
+  el.classList.add('on');
+  var pid_map={'w':'#bpW','s':'#bpS','b':'#bpB'};
+  var panel=det.querySelector(pid_map[tab]||'#bpW');
+  if(panel)panel.classList.add('on');
+}
+
+function sendChk(t1,t2){
+  s1=t1||null; s2=t2||null;
+  renderSlots(); renderChkOut(); updSel();
+  goTab('chk',document.querySelectorAll('.ntab')[1]);
+}
+
+// ── TYPE CHECKER ───────────────────────────────────────────────────────────
+var s1=null,s2=null,dragging=null,pending=null;
+
+var pr=document.getElementById('palrow');
+TYPES.forEach(function(type){
+  var el=document.createElement('div');
+  el.className='tpill'; el.id='tp-'+type;
+  el.textContent=type;
+  el.style.background=tcol(type); el.style.color=tbg(type);
+  el.draggable=true;
+  el.addEventListener('dragstart',function(e){dragging=type;setTimeout(function(){el.classList.add('drag')},0);e.dataTransfer.setData('text/plain',type)});
+  el.addEventListener('dragend',function(){el.classList.remove('drag');dragging=null});
+  el.addEventListener('click',function(){pillClk(type)});
+  pr.appendChild(el);
+});
+
+function pillClk(type){
+  if(pending){setType(pending,type);pending=null;clrHL();return}
+  if(!s1)setType(1,type);
+  else if(!s2&&s1!==type)setType(2,type);
+}
+
+function dzoneclk(n){
+  var cur=n===1?s1:s2;
+  if(cur)return;
+  pending=n; clrHL();
+  document.getElementById('dz'+n).classList.add('pend');
+}
+
+function clrHL(){
+  document.getElementById('dz1').classList.remove('pend');
+  document.getElementById('dz2').classList.remove('pend');
+  pending=null;
+}
+
+function dov(e){e.preventDefault();e.currentTarget.classList.add('ov')}
+function dlv(e){e.currentTarget.classList.remove('ov')}
+function ddp(e,n){e.preventDefault();e.currentTarget.classList.remove('ov');var t=e.dataTransfer.getData('text/plain')||dragging;if(t)setType(n,t)}
+
+function setType(n,type){
+  if(n===1&&s2===type)s2=null;
+  if(n===2&&s1===type)return;
+  if(n===1)s1=type; else s2=type;
+  clrHL(); renderSlots(); renderChkOut(); updSel();
+}
+
+function remType(n){if(n===1)s1=null;else s2=null;renderSlots();renderChkOut();updSel()}
+function clrChk(){s1=null;s2=null;clrHL();renderSlots();renderChkOut();updSel()}
+
+function updSel(){
+  TYPES.forEach(function(t){
+    var el=document.getElementById('tp-'+t);
+    if(el)(t===s1||t===s2)?el.classList.add('sel'):el.classList.remove('sel');
+  });
+}
+
+function mkSBadge(type,n){
+  return '<div class="sbadge" style="background:'+tcol(type)+';color:'+tbg(type)+'" onclick="event.stopPropagation();remType('+n+')">'+type+'<span class="rmbtn">✕</span></div>';
+}
+
+function renderSlots(){
+  document.getElementById('dz1s').innerHTML=s1?mkSBadge(s1,1):'<div class="dzemp"><em>⬡</em>ลาก type มาวางที่นี่<br>หรือกดเพื่อเลือก</div>';
+  document.getElementById('dz2s').innerHTML=s2?mkSBadge(s2,2):'<div class="dzemp"><em>⬡</em>Dual-Type Pokemon<br>ใส่ type ที่ 2 ที่นี่</div>';
+}
+
+function renderChkOut(){
+  var el=document.getElementById('rout');
+  if(!s1){el.innerHTML='<div class="rph"><span>⬡</span>เลือก Type 1 เพื่อดูผล</div>';return}
+  var mu=calcMu(s1,s2);
+  var cats=[
+    {m:'×4',lbl:'4× Weak',cls:'rcat rc4x',f:function(m){return m===4}},
+    {m:'×2',lbl:'2× Weak',cls:'rcat rc2x',f:function(m){return m===2}},
+    {m:'½×',lbl:'½ Resist',cls:'rcat rch',f:function(m){return m===0.5}},
+    {m:'¼×',lbl:'¼ Resist',cls:'rcat rcq',f:function(m){return m===0.25}},
+    {m:'0×',lbl:'Immune',cls:'rcat rc0',f:function(m){return m===0}},
+    {m:'1×',lbl:'Neutral',cls:'rcat rc1x',f:function(m){return m===1}},
+  ];
+  var combo='<div class="comb">'+mkSBadge(s1,1).replace(' onclick="event.stopPropagation();remType(1)"','');
+  if(s2)combo+='<span class="cpl">+</span>'+mkSBadge(s2,2).replace(' onclick="event.stopPropagation();remType(2)"','');
+  combo+='</div>';
+  var grid='<div class="rgrid">';
+  cats.forEach(function(cat){
+    var ts=TYPES.filter(function(t){return cat.f(mu[t])});
+    if(!ts.length&&cat.m==='1×')return;
+    grid+='<div class="'+cat.cls+'"><div class="rcttit"><span class="rm">'+cat.m+'</span>'+cat.lbl+'</div><div class="rchips">';
+    if(!ts.length)grid+='<span class="ecat">—</span>';
+    else ts.forEach(function(t){grid+=mkChip(t,'rc')});
+    grid+='</div></div>';
+  });
+  grid+='</div>';
+  el.innerHTML=combo+grid;
+}
+
+// ── EV FIELD ───────────────────────────────────────────────────────────────
+var evfStatFilter=-1;
+var EVF_STAT_NAMES=['HP','Attack','Defense','Sp.Atk','Sp.Def','Speed'];
+var EVF_COLORS=['#ff6b6a','#f5a832','#5b8eff','#e882b0','#5dcaa5','#5ec44a'];
+
+function evfFilter(stat,el){
+  evfStatFilter=stat;
+  document.querySelectorAll('#evfFilterBar .ev-sb').forEach(function(b){b.classList.remove('on')});
+  if(el)el.classList.add('on');
+  renderEVF();
+}
+
+function renderEVF(){
+  var q=(document.getElementById('evf-q')?document.getElementById('evf-q').value||'':'').toLowerCase().trim();
+  var list=DEX.filter(function(p){
+    var ev=EV_YIELD[p[0]];
+    if(!ev||!ev.length)return false;
+    if(evfStatFilter>=0){
+      var has=ev.some(function(pair){return pair[0]===evfStatFilter});
+      if(!has)return false;
+    }
+    return !q||p[1].toLowerCase().indexOf(q)>=0||String(p[0]).indexOf(q)>=0;
+  });
+
+  // sort by dex number
+  list.sort(function(a,b){return a[0]-b[0]});
+
+  var cntEl=document.getElementById('evf-cnt');
+  if(cntEl)cntEl.textContent=list.length?list.length+' found':'';
+
+  var container=document.getElementById('evf-list');
+  if(!container)return;
+  if(!list.length){container.innerHTML='<div class="nores" style="display:block"><span>🔭</span>ไม่พบ Pokemon</div>';return;}
+
+  container.innerHTML=list.slice(0,300).map(function(p){
+    var id=p[0],name=p[1],t1=p[2],t2=p[3];
+    var ev=EV_YIELD[id];
+    var chips=ev.map(function(pair){
+      var si=pair[0],amt=pair[1];
+      var col=EVF_COLORS[si];
+      var isHi=(evfStatFilter===si);
+      return '<span class="evf-chip" style="background:'+col+';'+(isHi?'box-shadow:0 0 0 2px rgba(255,255,255,.5)':'')+'">'
+        +'<span class="evf-chip-amt">+'+amt+'</span> '+EVF_STAT_NAMES[si]
+        +'</span>';
+    }).join('');
+    var typeBadges=mkBadge(t1,'tb')+(t2?mkBadge(t2,'tb'):'');
+
+    return '<div class="evf-row" onclick="selCard('+id+');goTab(\'dex\',document.querySelectorAll(\'.ntab\')[0])">'
+      +'<img class="evf-sp" src="'+sprite(id)+'" alt="'+name+'" onerror="this.style.display=\'none\'" loading="lazy">'
+      +'<div class="evf-info">'
+        +'<div class="evf-pnum">#'+numStr(id)+'</div>'
+        +'<div class="evf-pnm">'+name+'</div>'
+        +'<div class="evf-types">'+typeBadges+'</div>'
+      +'</div>'
+      +'<div class="evf-yields">'+chips+'</div>'
+      +'</div>';
+  }).join('');
+
+  if(list.length>300){
+    container.innerHTML+='<div style="text-align:center;padding:14px;color:var(--mu);font-size:13px">...และอีก '+(list.length-300)+' ตัว กรอกชื่อเพื่อค้นหาเพิ่ม</div>';
+  }
+}
+
+// ── EV CHECKER ─────────────────────────────────────────────────────────────
+var evSortCol=0, evSortAsc=false;
+var EV_STAT_LABELS=['HP','ATK','DEF','Sp.ATK','Sp.DEF','SPD'];
+
+function evSort(col,el){
+  if(evSortCol===col){ evSortAsc=!evSortAsc; }
+  else{ evSortCol=col; evSortAsc=false; }
+  document.querySelectorAll('.ev-sb').forEach(function(b){b.classList.remove('on')});
+  if(el)el.classList.add('on');
+  document.getElementById('evDirBtn').textContent=evSortAsc?'↑ ASC':'↓ DESC';
+  renderEV();
+}
+
+function evToggleDir(){
+  evSortAsc=!evSortAsc;
+  document.getElementById('evDirBtn').textContent=evSortAsc?'↑ ASC':'↓ DESC';
+  renderEV();
+}
+
+function renderEV(){
+  var q=(document.getElementById('ev-q')?document.getElementById('ev-q').value||'':'').toLowerCase().trim();
+  var list=DEX.filter(function(p){
+    if(!BASE_STATS[p[0]])return false;
+    return !q||p[1].toLowerCase().indexOf(q)>=0||String(p[0]).indexOf(q)>=0;
+  });
+
+  // sort
+  var col=evSortCol;
+  list.sort(function(a,b){
+    var va=BASE_STATS[a[0]]?BASE_STATS[a[0]][col]:0;
+    var vb=BASE_STATS[b[0]]?BASE_STATS[b[0]][col]:0;
+    return evSortAsc?va-vb:vb-va;
+  });
+
+  var container=document.getElementById('ev-list');
+  if(!container)return;
+  if(!list.length){container.innerHTML='<div class="nores" style="display:block"><span>🔭</span>ไม่พบ Pokemon</div>';return;}
+
+  container.innerHTML=list.slice(0,200).map(function(p,idx){
+    var id=p[0],name=p[1],t1=p[2],t2=p[3];
+    var s=BASE_STATS[id];
+    var statCells=EV_STAT_LABELS.map(function(lbl,i){
+      var v=s[i];
+      var pct=Math.min(100,Math.round(v/255*100));
+      var col2=getStatColor(v);
+      var isHi=(i===evSortCol&&evSortCol<6);
+      return '<div class="ev-stat-cell">'
+        +'<div class="ev-stat-key">'+lbl+'</div>'
+        +'<div class="ev-stat-num'+(isHi?' hi':'')+'">'+v+'</div>'
+        +'<div class="ev-stat-bar"><div class="ev-stat-fill" style="width:'+pct+'%;background:'+col2+'"></div></div>'
+        +'</div>';
+    }).join('');
+
+    var typeBadges=mkBadge(t1,'tb')+(t2?mkBadge(t2,'tb'):'');
+    var bstHi=evSortCol===6;
+
+    return '<div class="ev-row" onclick="selCard('+id+');goTab(\'dex\',document.querySelectorAll(\'.ntab\')[0])">'
+      +'<div class="ev-rank">'+(idx+1)+'</div>'
+      +'<img class="ev-sp" src="'+sprite(id)+'" alt="'+name+'" onerror="this.style.display=\'none\'" loading="lazy">'
+      +'<div class="ev-info">'
+        +'<div class="ev-pnum">#'+numStr(id)+'</div>'
+        +'<div class="ev-pnm">'+name+'</div>'
+        +'<div class="ev-types">'+typeBadges+'</div>'
+      +'</div>'
+      +'<div class="ev-stats"><div class="ev-stat-grid">'+statCells+'</div></div>'
+      +'<div class="ev-bst">'
+        +'<div class="ev-bst-val'+(bstHi?' hi':'')+'">'+s[6]+'</div>'
+        +'<div class="ev-bst-lbl">BST</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+
+  if(list.length>200){
+    container.innerHTML+='<div style="text-align:center;padding:14px;color:var(--mu);font-size:13px">...และอีก '+(list.length-200)+' ตัว กรอกชื่อเพื่อค้นหาเพิ่ม</div>';
+  }
+}
+
+// ── TEAM BUILDER ───────────────────────────────────────────────────────────
+var team = [null,null,null,null,null,null];
+var activeSlot = null;
+
+function initTeamSlots(){
+  var el = document.getElementById('team-slots');
+  el.innerHTML = '';
+  for(var i=0;i<6;i++){
+    var p = team[i];
+    var div = document.createElement('div');
+    div.className = 'team-slot' + (p ? ' filled' : '') + (activeSlot===i ? ' active-pick' : '');
+    div.setAttribute('data-slot', i);
+    div.onclick = (function(idx){ return function(){ onSlotClick(idx); }; })(i);
+    if(p){
+      div.innerHTML =
+        '<span class="slot-num">'+(i+1)+'</span>'
+        +'<span class="slot-remove" onclick="event.stopPropagation();removeFromTeam('+i+')">✕</span>'
+        +'<img class="slot-sprite" src="'+sprite(p.id)+'" alt="'+p.name+'" onerror="this.style.display=\'none\'">'
+        +'<div class="slot-name">'+p.name+'</div>'
+        +'<div class="slot-types">'+mkBadge(p.t1,'ptb')+(p.t2?mkBadge(p.t2,'ptb'):'')+'</div>';
+    } else {
+      div.innerHTML =
+        '<span class="slot-num">'+(i+1)+'</span>'
+        +'<span class="slot-empty-icon">⬡</span>'
+        +'<span class="slot-empty-lbl">เพิ่ม Pokemon</span>';
+    }
+    el.appendChild(div);
+  }
+}
+
+function onSlotClick(idx){
+  if(activeSlot === idx){
+    activeSlot = null;
+    document.getElementById('team-pick-bar').style.display = 'none';
+  } else {
+    activeSlot = idx;
+    document.getElementById('team-pick-bar').style.display = 'block';
+    document.getElementById('pick-bar-lbl').textContent = 'เลือก Pokemon สำหรับช่องที่ '+(idx+1);
+    document.getElementById('team-search').value = '';
+    renderPickList();
+    document.getElementById('team-search').focus();
+  }
+  initTeamSlots();
+}
+
+function renderPickList(){
+  var q = (document.getElementById('team-search').value||'').toLowerCase().trim();
+  var inTeam = team.filter(Boolean).map(function(p){return p.id});
+  var filtered = DEX.filter(function(p){
+    return !q || p[1].toLowerCase().indexOf(q)>=0 || String(p[0]).indexOf(q)>=0;
+  }).slice(0,60);
+  var grid = document.getElementById('pick-grid');
+  if(!filtered.length){grid.innerHTML='<div style="color:var(--mu);font-size:13px;padding:10px">ไม่พบ Pokemon</div>';return;}
+  grid.innerHTML = filtered.map(function(p){
+    var id=p[0],name=p[1],t1=p[2],t2=p[3];
+    var inT = inTeam.indexOf(id)>=0;
+    var op = inT ? 'opacity:.4;pointer-events:none' : '';
+    return '<div class="pick-card" style="'+op+'" onclick="addToTeam('+id+')">'
+      +'<img class="pick-spr" src="'+sprite(id)+'" alt="'+name+'" onerror="this.style.display=\'none\'">'
+      +'<div class="pick-name">'+name+'</div>'
+      +'<div class="pick-types">'+mkBadge(t1,'ptb')+(t2?mkBadge(t2,'ptb'):'')+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function addToTeam(id){
+  if(activeSlot === null) return;
+  var p = DEX.find(function(x){return x[0]===id});
+  if(!p) return;
+  team[activeSlot] = {id:p[0],name:p[1],t1:p[2],t2:p[3]};
+  var next = -1;
+  for(var i=0;i<6;i++){
+    var si = (activeSlot+1+i)%6;
+    if(!team[si]){next=si;break;}
+  }
+  if(next>=0){
+    activeSlot = next;
+    document.getElementById('pick-bar-lbl').textContent = 'เลือก Pokemon สำหรับช่องที่ '+(next+1);
+    document.getElementById('team-search').value = '';
+    renderPickList();
+  } else {
+    activeSlot = null;
+    document.getElementById('team-pick-bar').style.display = 'none';
+  }
+  initTeamSlots();
+  renderTeamAnalysis();
+}
+
+function removeFromTeam(idx){
+  team[idx] = null;
+  initTeamSlots();
+  renderTeamAnalysis();
+  if(activeSlot === null) document.getElementById('team-pick-bar').style.display = 'none';
+}
+
+function clearTeam(){
+  team = [null,null,null,null,null,null];
+  activeSlot = null;
+  document.getElementById('team-pick-bar').style.display = 'none';
+  initTeamSlots();
+  renderTeamAnalysis();
+}
+
+function calcTeamMu(member){return calcMu(member.t1, member.t2);}
+
+function renderTeamAnalysis(){
+  var el = document.getElementById('team-analysis');
+  var filled = team.filter(Boolean);
+  if(filled.length === 0){
+    el.innerHTML = '<div class="team-empty-state"><span class="tei">🏆</span>เพิ่ม Pokemon เข้าทีมเพื่อดูการวิเคราะห์</div>';
+    return;
+  }
+  var weakCount = {}, immuneCount = {};
+  TYPES.forEach(function(atk){
+    weakCount[atk] = 0; immuneCount[atk] = 0;
+    filled.forEach(function(m){
+      var mu = calcTeamMu(m);
+      if(mu[atk] >= 2) weakCount[atk]++;
+      if(mu[atk] === 0) immuneCount[atk]++;
+    });
+  });
+  var sorted = TYPES.slice().sort(function(a,b){return weakCount[b]-weakCount[a];});
+  var teamTypes = [];
+  filled.forEach(function(m){
+    if(teamTypes.indexOf(m.t1)<0) teamTypes.push(m.t1);
+    if(m.t2 && teamTypes.indexOf(m.t2)<0) teamTypes.push(m.t2);
+  });
+  var seCoverage = {};
+  TYPES.forEach(function(def){
+    seCoverage[def] = 0;
+    teamTypes.forEach(function(atk){
+      if(CHART[def].i.indexOf(atk)>=0) return;
+      if(CHART[def].w.indexOf(atk)>=0) seCoverage[def]++;
+    });
+  });
+  var coveredCount = TYPES.filter(function(t){return seCoverage[t]>0}).length;
+  var uncovered = TYPES.filter(function(t){return seCoverage[t]===0});
+  var maxWeak = Math.max.apply(null, TYPES.map(function(t){return weakCount[t]}));
+  var scoreClass = maxWeak <= 1 ? 'score-good' : maxWeak === 2 ? 'score-warn' : 'score-bad';
+  var scoreText = maxWeak <= 1 ? 'Good' : maxWeak === 2 ? 'Caution' : 'Weak';
+  var html = '';
+
+  html += '<div class="cov-section">';
+  html += '<div class="cov-title">🛡️ Defensive Weakness<span class="score-badge '+scoreClass+'">'+scoreText+'</span></div>';
+  html += '<div class="cov-subtitle" style="margin-bottom:10px">จำนวนสมาชิกในทีมที่อ่อนต่อแต่ละ Type</div>';
+  html += '<div class="weak-meter">';
+  sorted.forEach(function(atk){
+    var wc = weakCount[atk], ic = immuneCount[atk];
+    if(wc === 0 && ic === 0) return;
+    var col = wc >= 3 ? '#ff6b6a' : wc === 2 ? '#f5a832' : wc === 1 ? '#f5c518' : '#5dcaa5';
+    var pct = Math.round(wc / filled.length * 100);
+    html += '<div class="weak-row">'
+      +'<span class="weak-lbl" style="color:'+tcol(atk)+'">'+atk+'</span>'
+      +'<div class="weak-bar-bg"><div class="weak-bar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>'
+      +'<span class="weak-cnt">';
+    if(wc>0) html += '<span style="color:'+col+'">'+wc+' weak</span>';
+    if(ic>0) html += (wc>0?' ':'')+'<span style="color:#5dcaa5">'+ic+' imm</span>';
+    html += '</span></div>';
+  });
+  html += '</div></div>';
+
+  var covScore = coveredCount >= 15 ? 'score-good' : coveredCount >= 12 ? 'score-warn' : 'score-bad';
+  html += '<div class="cov-section">';
+  html += '<div class="cov-title">⚔️ Offensive Coverage<span class="score-badge '+covScore+'">'+coveredCount+'/18</span></div>';
+  html += '<div class="cov-subtitle">จำนวน type ของทีมที่ hit super effective</div>';
+  html += '<div class="cov-type-grid">';
+  TYPES.forEach(function(def){
+    var sc = seCoverage[def];
+    var bgAlpha = sc === 0 ? 'rgba(226,75,74,.1)' : sc === 1 ? 'rgba(245,197,24,.1)' : 'rgba(95,220,130,.1)';
+    var textCol = sc === 0 ? '#ff6b6a' : sc === 1 ? '#f5c518' : '#5dcaa5';
+    var barPct = teamTypes.length ? Math.round(sc / teamTypes.length * 100) : 0;
+    html += '<div class="cov-type-cell" style="background:'+bgAlpha+'">'
+      +'<span class="cov-type-name" style="color:'+tcol(def)+'">'+def.slice(0,4)+'</span>'
+      +'<div class="cov-type-bar"><div class="cov-type-fill" style="width:'+barPct+'%;background:'+textCol+'"></div></div>'
+      +'<span class="cov-type-count" style="color:'+textCol+'">'+sc+'</span>'
+      +'</div>';
+  });
+  html += '</div>';
+  if(uncovered.length > 0){
+    html += '<div style="margin-top:10px"><span style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#ff6b6a;letter-spacing:1px;text-transform:uppercase">ยังไม่ cover: </span>';
+    html += uncovered.map(function(t){return '<span class="ptb" style="background:'+tcol(t)+';color:'+tbg(t)+'">'+t+'</span>';}).join(' ');
+    html += '</div>';
+  }
+  html += '</div>';
+
+  html += '<div class="cov-section">';
+  html += '<div class="cov-title">👥 Team Member Breakdown</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">';
+  filled.forEach(function(m){
+    var mu = calcTeamMu(m);
+    var weak4 = TYPES.filter(function(t){return mu[t]===4});
+    var weak2 = TYPES.filter(function(t){return mu[t]===2});
+    var immune = TYPES.filter(function(t){return mu[t]===0});
+    html += '<div style="background:var(--surf2);border-radius:12px;padding:10px 12px;border:1px solid var(--bd)">';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+      +'<img src="'+sprite(m.id)+'" width="44" height="44" style="image-rendering:pixelated" onerror="this.style.display=\'none\'">'
+      +'<div><div style="font-family:\'Saira Condensed\',sans-serif;font-size:15px;font-weight:700;text-transform:capitalize">'+m.name+'</div>'
+      +'<div style="display:flex;gap:4px;margin-top:3px">'+mkBadge(m.t1,'ptb')+(m.t2?mkBadge(m.t2,'ptb'):'')+'</div>'
+      +'</div></div>';
+    if(weak4.length){
+      html += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#ff6b6a;letter-spacing:1px;margin-bottom:3px">×4</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px">'+weak4.map(function(t){return '<span class="ptb" style="background:'+tcol(t)+';color:'+tbg(t)+'">'+t+'</span>';}).join('')+'</div>';
+    }
+    if(weak2.length){
+      html += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#f5a832;letter-spacing:1px;margin-bottom:3px">×2</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px">'+weak2.map(function(t){return '<span class="ptb" style="background:'+tcol(t)+';color:'+tbg(t)+'">'+t+'</span>';}).join('')+'</div>';
+    }
+    if(immune.length){
+      html += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#5dcaa5;letter-spacing:1px;margin-bottom:3px">IMMUNE</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px">'+immune.map(function(t){return '<span class="ptb" style="background:'+tcol(t)+';color:'+tbg(t)+'">'+t+'</span>';}).join('')+'</div>';
+    }
+    if(!weak4.length && !weak2.length) html += '<div style="color:var(--mu);font-size:12px">ไม่มีจุดอ่อนพิเศษ</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+  el.innerHTML = html;
+}
+
+// ── TAB SWITCH ─────────────────────────────────────────────────────────────
+function goTab(tab,el){
+  document.querySelectorAll('.ntab').forEach(function(t){t.classList.remove('on')});
+  document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on')});
+  if(el)el.classList.add('on');
+  document.getElementById('pg-'+tab).classList.add('on');
+  window.scrollTo(0,0);
+  if(tab==='ev')renderEV();
+  if(tab==='evf')renderEVF();
+  if(tab==='team'){initTeamSlots();renderTeamAnalysis();}
+}
+
+// ── INIT ────────────────────────────────────────────────────────────────────
+(function(){
+  // Build filter row
+  var fr=document.getElementById('frow');
+  fr.innerHTML='<div class="fp fall on" onclick="setFilter(\'\',this)">All</div>';
+  TYPES.forEach(function(t){
+    fr.innerHTML+='<div class="fp" style="background:'+tcol(t)+';color:'+tbg(t)+'" onclick="setFilter(\''+t+'\',this)">'+t+'</div>';
+  });
+  // Build type palette
+  var pr=document.getElementById('palrow');
+  TYPES.forEach(function(type){
+    var el=document.createElement('div');
+    el.className='tpill'; el.id='tp-'+type;
+    el.textContent=type;
+    el.style.background=tcol(type); el.style.color=tbg(type);
+    el.draggable=true;
+    el.addEventListener('dragstart',function(e){dragging=type;setTimeout(function(){el.classList.add('drag')},0);e.dataTransfer.setData('text/plain',type)});
+    el.addEventListener('dragend',function(){el.classList.remove('drag');dragging=null});
+    el.addEventListener('click',function(){pillClk(type)});
+    pr.appendChild(el);
+  });
+  renderDex();
+  renderSlots();
+  renderChkOut();
+  initTeamSlots();
+  renderTeamAnalysis();
+  renderEV();
+  renderEVF();
+})();
+</script>
+</body>
+</html>
