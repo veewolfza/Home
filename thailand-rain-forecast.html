@@ -1,0 +1,2333 @@
+<!--
+  Thailand Rain Forecast Radar
+  ============================
+  GitHub Pages deployment:
+  1. สร้าง repo ใหม่ (เช่น rain-th)
+  2. อัปโหลด/push ไฟล์นี้ → เปลี่ยนชื่อเป็น index.html
+  3. Settings → Pages → Branch: main / root → Save
+  4. URL: https://<username>.github.io/rain-th/
+
+  Dependencies (CDN, ไม่ต้องติดตั้งอะไร):
+  - Leaflet 1.9.4  (map)
+  - Lucide latest  (icons)
+  - RainViewer public API  (radar)
+  - Open-Meteo API  (forecast)
+-->
+<!doctype html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thailand Rain Forecast Radar</title>
+  <meta name="description" content="Live rain radar and rain forecast dashboard for Thailand using RainViewer and Open-Meteo public data.">
+  <meta property="og:title" content="Thailand Rain Forecast Radar">
+  <meta property="og:description" content="Live radar · nowcast 2h · forecast 14 วัน · ไม่ต้องติดตั้ง">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#091116">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://api.rainviewer.com">
+  <link rel="preconnect" href="https://api.open-meteo.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #091116;
+      --glass: rgba(12, 18, 22, 0.84);
+      --glass-strong: rgba(10, 15, 18, 0.94);
+      --paper: #121b21;
+      --paper-soft: #18252d;
+      --ink: #f5fbff;
+      --muted: #a8b5bd;
+      --line: rgba(218, 233, 239, 0.16);
+      --soft: rgba(218, 233, 239, 0.10);
+      --teal: #37d6c6;
+      --teal-dark: #15aa9c;
+      --rain: #25a8ff;
+      --yellow: #ffd21e;
+      --orange: #ff9138;
+      --red: #ff5b4d;
+      --green: #45d483;
+      --shadow: 0 20px 52px rgba(0, 0, 0, 0.38);
+      --radius: 8px;
+      --radius-sm: 6px;
+      --font: "Inter", "Noto Sans Thai", "Segoe UI", Tahoma, sans-serif;
+    }
+
+    html[data-theme="light"] {
+      color-scheme: light;
+      --bg: #edf4f3;
+      --glass: rgba(255, 255, 255, 0.88);
+      --glass-strong: rgba(255, 255, 255, 0.96);
+      --paper: #ffffff;
+      --paper-soft: #f1f6f5;
+      --ink: #10201e;
+      --muted: #5f6f70;
+      --line: rgba(28, 48, 48, 0.18);
+      --soft: rgba(28, 48, 48, 0.08);
+      --shadow: 0 20px 48px rgba(31, 55, 58, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app-shell {
+      height: 100vh;
+      min-height: 640px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #map {
+      background: #0c171c;
+      height: 100%;
+      width: 100%;
+    }
+
+    .topbar {
+      align-items: center;
+      background: var(--glass-strong);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 14px;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      left: 16px;
+      min-height: 58px;
+      padding: 8px 10px 8px 12px;
+      position: absolute;
+      right: 16px;
+      top: 14px;
+      z-index: 700;
+    }
+
+    .brand {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+      min-width: 210px;
+    }
+
+    .brand-mark {
+      align-items: center;
+      background: linear-gradient(145deg, #1db7e8, #31d6c4);
+      border-radius: 8px;
+      box-shadow: 0 0 24px rgba(37, 168, 255, 0.35);
+      color: #061115;
+      display: grid;
+      flex: 0 0 36px;
+      height: 36px;
+      justify-items: center;
+      width: 36px;
+    }
+
+    .brand h1 {
+      font-size: 17px;
+      line-height: 1.15;
+      margin: 0;
+    }
+
+    .brand p {
+      color: var(--muted);
+      font-size: 11px;
+      margin: 2px 0 0;
+    }
+
+    .nav-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .nav-btn,
+    .icon-btn,
+    .btn,
+    .chip-btn {
+      align-items: center;
+      background: var(--paper-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      color: var(--ink);
+      display: inline-flex;
+      font-size: 12px;
+      font-weight: 800;
+      gap: 7px;
+      height: 38px;
+      justify-content: center;
+      padding: 0 12px;
+      transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+      white-space: nowrap;
+    }
+
+    .nav-btn:hover,
+    .icon-btn:hover,
+    .btn:hover,
+    .chip-btn:hover {
+      background: color-mix(in srgb, var(--paper-soft), var(--teal) 12%);
+      border-color: color-mix(in srgb, var(--line), var(--teal) 55%);
+    }
+
+    .nav-btn.primary,
+    .btn.primary {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: #061115;
+    }
+
+    .btn.danger {
+      background: color-mix(in srgb, var(--red), transparent 84%);
+      border-color: color-mix(in srgb, var(--red), transparent 45%);
+      color: var(--red);
+    }
+
+    .icon-btn {
+      padding: 0;
+      width: 38px;
+    }
+
+    .btn:active,
+    .icon-btn:active,
+    .nav-btn:active {
+      transform: translateY(1px);
+    }
+
+    .top-actions {
+      align-items: center;
+      display: flex;
+      gap: 7px;
+      justify-content: flex-end;
+    }
+
+    .status-pill {
+      align-items: center;
+      background: var(--paper-soft);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      display: inline-flex;
+      gap: 8px;
+      height: 30px;
+      padding: 0 10px;
+    }
+
+    .status-dot {
+      background: var(--orange);
+      border-radius: 999px;
+      box-shadow: 0 0 0 5px rgba(255, 145, 56, 0.14);
+      flex: 0 0 9px;
+      height: 9px;
+      width: 9px;
+    }
+
+    .status-dot.live {
+      animation: pulse 2s infinite;
+      background: var(--green);
+      box-shadow: 0 0 0 5px rgba(69, 212, 131, 0.16);
+    }
+
+    .status-text {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      max-width: 170px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .radar-caption {
+      background: rgba(7, 12, 15, 0.66);
+      border-radius: 0 8px 8px 0;
+      color: white;
+      left: 0;
+      padding: 12px 14px;
+      position: absolute;
+      top: 92px;
+      z-index: 620;
+    }
+
+    html[data-theme="light"] .radar-caption {
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--ink);
+    }
+
+    .radar-caption span {
+      color: var(--muted);
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .radar-caption strong {
+      display: block;
+      font-size: 20px;
+      line-height: 1.1;
+      margin-top: 3px;
+    }
+
+    .infographic {
+      background: var(--glass);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 12px;
+      left: 16px;
+      max-width: 340px;
+      padding: 14px;
+      position: absolute;
+      top: 170px;
+      width: calc(100vw - 32px);
+      z-index: 620;
+    }
+
+    .infographic.is-hidden {
+      display: none;
+    }
+
+    .info-head {
+      align-items: start;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr auto;
+    }
+
+    .info-head h2 {
+      font-size: 15px;
+      line-height: 1.25;
+      margin: 0;
+    }
+
+    .info-head p {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 3px 0 0;
+    }
+
+    .weather-chip {
+      align-items: center;
+      background: color-mix(in srgb, var(--rain), transparent 82%);
+      border: 1px solid color-mix(in srgb, var(--rain), transparent 58%);
+      border-radius: 999px;
+      color: var(--ink);
+      display: inline-flex;
+      font-size: 11px;
+      font-weight: 900;
+      gap: 6px;
+      height: 26px;
+      padding: 0 9px;
+      white-space: nowrap;
+    }
+
+    .metrics {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .metric {
+      background: var(--paper-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 9px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 19px;
+      line-height: 1.1;
+    }
+
+    .metric span {
+      color: var(--muted);
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+
+    .storm-strip {
+      align-items: center;
+      background: linear-gradient(90deg, rgba(37, 168, 255, 0.22), rgba(255, 210, 30, 0.18), rgba(255, 91, 77, 0.16));
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      display: grid;
+      gap: 8px;
+      grid-template-columns: auto 1fr;
+      padding: 10px;
+    }
+
+    .storm-strip i {
+      color: var(--yellow);
+    }
+
+    .storm-strip strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .storm-strip span {
+      color: var(--muted);
+      display: block;
+      font-size: 11px;
+      margin-top: 1px;
+    }
+
+    .rain-scale {
+      display: grid;
+      gap: 6px;
+    }
+
+    .rain-scale-track {
+      background: linear-gradient(90deg, #29a7ff 0%, #36d6c7 32%, #ffe53d 58%, #ff9838 78%, #ff4e50 100%);
+      border-radius: 999px;
+      height: 10px;
+      overflow: hidden;
+    }
+
+    .rain-scale-labels {
+      color: var(--muted);
+      display: flex;
+      font-size: 10px;
+      font-weight: 800;
+      justify-content: space-between;
+    }
+
+    .quick-actions {
+      bottom: 106px;
+      display: grid;
+      gap: 8px;
+      position: absolute;
+      right: 16px;
+      z-index: 620;
+    }
+
+    .timeline {
+      align-items: center;
+      background: var(--glass-strong);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      bottom: 16px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 10px;
+      grid-template-columns: auto auto auto minmax(140px, 1fr) auto auto;
+      left: 50%;
+      max-width: 760px;
+      padding: 10px;
+      position: absolute;
+      transform: translateX(-50%);
+      width: calc(100vw - 32px);
+      z-index: 620;
+    }
+
+    .nowcast-badge {
+      align-items: center;
+      background: color-mix(in srgb, var(--green), transparent 72%);
+      border: 1px solid color-mix(in srgb, var(--green), transparent 38%);
+      border-radius: 999px;
+      color: var(--green);
+      display: inline-flex;
+      font-size: 11px;
+      font-weight: 900;
+      gap: 5px;
+      height: 28px;
+      padding: 0 10px;
+      white-space: nowrap;
+    }
+
+    .nowcast-badge.inactive {
+      background: color-mix(in srgb, var(--muted), transparent 80%);
+      border-color: var(--line);
+      color: var(--muted);
+    }
+
+    .timeline .frame-range {
+      accent-color: var(--rain);
+      min-width: 0;
+      width: 100%;
+    }
+
+    .frame-label {
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 900;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .frame-chip-row {
+      display: none !important;
+    }
+
+    .frame-chip {
+      background: var(--paper-soft);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      flex: 0 0 auto;
+      font-size: 11px;
+      font-weight: 900;
+      height: 24px;
+      padding: 0 8px;
+    }
+
+    .frame-chip.active {
+      background: color-mix(in srgb, var(--rain), transparent 72%);
+      border-color: color-mix(in srgb, var(--rain), transparent 25%);
+      color: var(--ink);
+    }
+
+    .frame-chip.future {
+      background: color-mix(in srgb, var(--green), transparent 78%);
+      color: var(--ink);
+    }
+
+    .leaflet-layer {
+      transition: opacity 420ms ease;
+    }
+
+    .leaflet-tile {
+      will-change: opacity, transform;
+    }
+
+    .leaflet-bottom.leaflet-right {
+      bottom: 86px;
+    }
+
+    .leaflet-control-attribution {
+      display: none !important;
+    }
+
+    .leaflet-control-zoom a {
+      background: var(--glass-strong);
+      border-color: var(--line);
+      color: var(--ink);
+    }
+
+    dialog.modal {
+      background: transparent;
+      border: 0;
+      margin: auto;
+      max-height: min(720px, calc(100vh - 38px));
+      max-width: min(720px, calc(100vw - 28px));
+      padding: 0;
+      width: 100%;
+    }
+
+    dialog.modal::backdrop {
+      background: rgba(0, 0, 0, 0.52);
+      backdrop-filter: blur(2px);
+    }
+
+    .modal-panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      color: var(--ink);
+      display: grid;
+      gap: 14px;
+      max-height: min(720px, calc(100vh - 38px));
+      overflow: auto;
+      padding: 16px;
+    }
+
+    .modal-head {
+      align-items: start;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr auto;
+    }
+
+    .modal-head h2 {
+      font-size: 19px;
+      line-height: 1.25;
+      margin: 0;
+    }
+
+    .modal-head p {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 4px 0 0;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .field input,
+    .field select {
+      background: var(--paper-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      color: var(--ink);
+      height: 40px;
+      outline: none;
+      padding: 0 11px;
+      width: 100%;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal), transparent 76%);
+    }
+
+    .button-row {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .source-note,
+    .empty {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 0;
+    }
+
+    .source-note a {
+      color: var(--teal);
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .feature-list,
+    .favorite-list,
+    .alert-list,
+    .hour-list,
+    .daily-list,
+    .insight-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .feature-item,
+    .favorite-item,
+    .alert-item,
+    .hour-row,
+    .daily-row,
+    .insight-item {
+      background: var(--paper-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 11px;
+    }
+
+    .feature-item {
+      align-items: start;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: auto 1fr auto;
+    }
+
+    .feature-icon,
+    .insight-icon {
+      align-items: center;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--teal);
+      display: grid;
+      height: 30px;
+      justify-items: center;
+      width: 30px;
+    }
+
+    .feature-item h3,
+    .favorite-item h3,
+    .alert-item h3,
+    .hour-row h3,
+    .daily-row h3,
+    .insight-item h3 {
+      font-size: 13px;
+      line-height: 1.3;
+      margin: 0;
+    }
+
+    .feature-item p,
+    .favorite-item p,
+    .alert-item p,
+    .hour-row p,
+    .daily-row p,
+    .insight-item p {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 3px 0 0;
+    }
+
+    .badge {
+      align-items: center;
+      border-radius: 999px;
+      display: inline-flex;
+      font-size: 11px;
+      font-weight: 900;
+      height: 24px;
+      padding: 0 8px;
+      white-space: nowrap;
+    }
+
+    .badge.ok {
+      background: color-mix(in srgb, var(--green), transparent 78%);
+      color: var(--green);
+    }
+
+    .badge.warn {
+      background: color-mix(in srgb, var(--yellow), transparent 78%);
+      color: var(--yellow);
+    }
+
+    .badge.danger,
+    .badge.lock {
+      background: color-mix(in srgb, var(--red), transparent 82%);
+      color: var(--red);
+    }
+
+    .favorite-item {
+      align-items: center;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: minmax(0, 1fr) auto auto auto;
+    }
+
+    .favorite-meta {
+      min-width: 0;
+    }
+
+    .favorite-meta h3 {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tab-row {
+      background: var(--paper-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      display: grid;
+      gap: 4px;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 4px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 0;
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      height: 34px;
+      padding: 0 8px;
+    }
+
+    .tab-btn.active {
+      background: var(--paper);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.10);
+      color: var(--ink);
+    }
+
+    .forecast-pane {
+      display: none;
+    }
+
+    .forecast-pane.active {
+      display: grid;
+      gap: 12px;
+    }
+
+    .model-chart {
+      align-items: end;
+      background: var(--paper-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      display: grid;
+      gap: 3px;
+      grid-template-columns: repeat(36, minmax(4px, 1fr));
+      height: 172px;
+      padding: 14px 10px 28px;
+      position: relative;
+    }
+
+    .model-chart::after {
+      bottom: 7px;
+      color: var(--muted);
+      content: "72h model forecast";
+      font-size: 11px;
+      font-weight: 900;
+      left: 10px;
+      position: absolute;
+    }
+
+    .bar {
+      background: linear-gradient(180deg, #38b6ff, #36d6c7);
+      border-radius: 3px 3px 0 0;
+      min-height: 4px;
+      position: relative;
+    }
+
+    .bar.hot {
+      background: linear-gradient(180deg, #ffe53d, #ff5b4d);
+    }
+
+    .hour-row,
+    .daily-row {
+      align-items: center;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 82px 1fr auto;
+      min-height: 58px;
+    }
+
+    .daily-row {
+      grid-template-columns: 102px 1fr auto;
+    }
+
+    .rain-meter {
+      background: color-mix(in srgb, var(--muted), transparent 78%);
+      border-radius: 999px;
+      height: 8px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .rain-meter i {
+      background: linear-gradient(90deg, var(--rain), var(--teal), var(--yellow));
+      border-radius: inherit;
+      display: block;
+      height: 100%;
+      min-width: 3px;
+    }
+
+    .prob {
+      color: var(--rain);
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .insight-item {
+      align-items: start;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 32px 1fr;
+    }
+
+    .alert-item {
+      border-left: 4px solid var(--green);
+    }
+
+    .alert-item.warn {
+      border-left-color: var(--yellow);
+    }
+
+    .alert-item.danger {
+      border-left-color: var(--red);
+    }
+
+    .rain-arrow {
+      align-items: center;
+      background: var(--glass-strong);
+      border: 1px solid color-mix(in srgb, var(--teal), transparent 45%);
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      color: var(--teal);
+      display: grid;
+      font-weight: 900;
+      height: 32px;
+      justify-items: center;
+      width: 32px;
+    }
+
+    .location-pin {
+      align-items: center;
+      background: var(--teal);
+      border: 3px solid white;
+      border-radius: 999px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+      color: #061115;
+      display: grid;
+      height: 26px;
+      justify-items: center;
+      width: 26px;
+    }
+
+    .spinner {
+      animation: spin 800ms linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(69, 212, 131, 0.32);
+      }
+      70% {
+        box-shadow: 0 0 0 9px rgba(69, 212, 131, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(69, 212, 131, 0);
+      }
+    }
+
+    @media (max-width: 920px) {
+      .app-shell {
+        min-height: 100svh;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr auto;
+      }
+
+      .nav-row {
+        display: none;
+      }
+
+      .status-pill {
+        display: none;
+      }
+
+      .brand {
+        min-width: 0;
+      }
+
+      .brand p {
+        display: none;
+      }
+
+      .quick-actions {
+        bottom: 138px;
+      }
+
+      .infographic {
+        max-width: calc(100vw - 32px);
+        top: 144px;
+      }
+
+      .timeline {
+        grid-template-columns: auto auto auto minmax(90px, 1fr) auto;
+        max-width: calc(100vw - 20px);
+      }
+
+      .frame-label {
+        grid-column: 1 / -1;
+        text-align: left;
+      }
+
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .tab-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 560px) {
+      .topbar {
+        left: 10px;
+        right: 10px;
+        top: 10px;
+      }
+
+      .radar-caption {
+        top: 80px;
+      }
+
+      .infographic {
+        left: 10px;
+        right: 10px;
+        top: 142px;
+        width: auto;
+      }
+
+      .quick-actions {
+        right: 10px;
+      }
+
+      .timeline {
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
+        transform: none;
+        width: auto;
+      }
+
+      .timeline .icon-btn {
+        height: 34px;
+        width: 34px;
+      }
+
+      .frame-chip-row {
+        display: none;
+      }
+
+      .button-row,
+      .hour-row,
+      .daily-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <div id="map" aria-label="Thailand live rain radar map"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><i data-lucide="cloud-rain"></i></div>
+        <div>
+          <h1>Rain Viewer TH</h1>
+          <p>Live radar and rain forecast</p>
+        </div>
+      </div>
+
+      <nav class="nav-row" aria-label="Main tools">
+        <button class="nav-btn primary" type="button" data-open="searchDialog"><i data-lucide="search"></i> ค้นหาพื้นที่</button>
+        <button class="nav-btn" type="button" data-open="forecastDialog"><i data-lucide="chart-no-axes-column"></i> พยากรณ์</button>
+        <button class="nav-btn" type="button" data-open="layersDialog"><i data-lucide="layers-3"></i> เลเยอร์</button>
+        <button class="nav-btn" type="button" data-open="featuresDialog"><i data-lucide="list-checks"></i> ฟังก์ชัน</button>
+      </nav>
+
+      <div class="top-actions">
+        <div class="status-pill" aria-live="polite">
+          <span class="status-dot" id="liveDot"></span>
+          <span class="status-text" id="statusText">กำลังโหลดเรดาร์...</span>
+        </div>
+        <button class="icon-btn" id="themeToggleBtn" type="button" title="Dark / light theme"><i data-lucide="sun"></i></button>
+        <button class="icon-btn" type="button" data-open="searchDialog" title="เมนู"><i data-lucide="menu"></i></button>
+      </div>
+    </header>
+
+    <section class="radar-caption" aria-live="polite">
+      <span>ส่งกลับนาทีของเรดาร์</span>
+      <strong id="radarClock">--:--</strong>
+    </section>
+
+    <section class="infographic" id="infographicPanel" aria-live="polite">
+      <div class="info-head">
+        <div>
+          <h2 id="selectedTitle">กรุงเทพมหานคร</h2>
+          <p id="selectedCoords">13.7563, 100.5018</p>
+        </div>
+        <span class="weather-chip" id="weatherNow"><i data-lucide="radar"></i> Live</span>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <strong id="nowProb">--%</strong>
+          <span>โอกาสฝนตอนนี้</span>
+        </div>
+        <div class="metric">
+          <strong id="nextRain">-- mm</strong>
+          <span>ฝน 2 ชม.</span>
+        </div>
+        <div class="metric">
+          <strong id="windInfo">--</strong>
+          <span>ลมโมเดล</span>
+        </div>
+      </div>
+
+      <div class="storm-strip">
+        <i data-lucide="cloud-lightning"></i>
+        <div>
+          <strong id="stormLevel">Storm watch กำลังประเมิน</strong>
+          <span id="infographicDesc">แตะบนแผนที่เพื่อดูข้อมูลรายจุด</span>
+        </div>
+      </div>
+
+      <div class="rain-scale" aria-label="Rain intensity legend">
+        <div class="rain-scale-track"></div>
+        <div class="rain-scale-labels">
+          <span>เบา</span>
+          <span>ปานกลาง</span>
+          <span>หนัก</span>
+          <span>รุนแรง</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="quick-actions" aria-label="Map quick actions">
+      <button class="icon-btn" id="refreshRadarBtn" type="button" title="อัปเดตเรดาร์"><i data-lucide="refresh-cw"></i></button>
+      <button class="icon-btn" id="fitThailandBtn" type="button" title="กลับมุมมองประเทศไทย"><i data-lucide="scan"></i></button>
+      <button class="icon-btn" id="toggleArrowsBtn" type="button" title="เปิด/ปิดลูกศรการเคลื่อนไหว"><i data-lucide="navigation"></i></button>
+      <button class="icon-btn" id="toggleCoverageBtn" type="button" title="เปิด/ปิด radar coverage"><i data-lucide="scan-eye"></i></button>
+      <button class="icon-btn" id="toggleInfoBtn" type="button" title="ซ่อน/แสดง infographic"><i data-lucide="info"></i></button>
+    </div>
+
+    <section class="timeline" aria-label="Radar timeline controls">
+      <button class="icon-btn" id="stepBackBtn" type="button" title="เฟรมก่อนหน้า"><i data-lucide="rotate-ccw"></i></button>
+      <button class="icon-btn" id="playBtn" type="button" title="เล่น/หยุด timeline"><i data-lucide="play"></i></button>
+      <button class="icon-btn" id="stepForwardBtn" type="button" title="เฟรมถัดไป"><i data-lucide="rotate-cw"></i></button>
+      <input class="frame-range" id="frameRange" type="range" min="0" max="0" value="0" aria-label="Radar frame timeline">
+      <div class="frame-label" id="frameLabel">ยังไม่มีเฟรมเรดาร์</div>
+      <div class="nowcast-badge" id="nowcastBadge" style="display:none">
+        <i data-lucide="zap"></i><span id="nowcastText">Nowcast +0</span>
+      </div>
+      <div class="frame-chip-row" id="frameChips"></div>
+    </section>
+  </main>
+
+  <dialog class="modal" id="searchDialog">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <div>
+          <h2>ค้นหาและบันทึกสถานที่</h2>
+          <p>เลือกจังหวัด แตะบนแผนที่ หรือใช้ตำแหน่งปัจจุบัน แล้วบันทึกได้สูงสุด 20 จุด</p>
+        </div>
+        <button class="icon-btn" type="button" data-close title="ปิด"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="field">
+        <label for="placeSearch">จังหวัดหรือเมือง</label>
+        <input id="placeSearch" list="thaiPlaces" placeholder="เช่น กรุงเทพมหานคร, เชียงใหม่, ภูเก็ต">
+        <datalist id="thaiPlaces"></datalist>
+      </div>
+
+      <div class="button-row">
+        <button class="btn primary" id="goPlaceBtn" type="button"><i data-lucide="map-pin"></i> ไปยังจุด</button>
+        <button class="btn" id="useGpsBtn" type="button"><i data-lucide="locate-fixed"></i> ใช้ตำแหน่งฉัน</button>
+      </div>
+      <button class="btn" id="saveFavoriteBtn" type="button"><i data-lucide="star"></i> บันทึกเป็นสถานที่โปรด</button>
+
+      <div class="modal-head">
+        <div>
+          <h2>สถานที่โปรด</h2>
+          <p id="favoriteCount">0 / 20</p>
+        </div>
+        <button class="btn" id="scanFavoritesBtn" type="button"><i data-lucide="radar"></i> ตรวจ Storm</button>
+      </div>
+      <div class="favorite-list" id="favoriteList">
+        <p class="empty">ยังไม่มีสถานที่โปรด</p>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal" id="layersDialog">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <div>
+          <h2>เลเยอร์เรดาร์</h2>
+          <p id="radarFreshness">รอข้อมูล RainViewer ล่าสุด</p>
+        </div>
+        <button class="icon-btn" type="button" data-close title="ปิด"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="field">
+        <label for="colorScheme">สีเรดาร์</label>
+        <select id="colorScheme">
+          <option value="2">สีมาตรฐาน Universal Blue</option>
+          <option value="4">สีเข้ม RainViewer</option>
+          <option value="7">สีพายุสด</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="opacityRange">ความทึบของเรดาร์</label>
+        <input id="opacityRange" type="range" min="20" max="95" value="86">
+      </div>
+
+      <div class="button-row">
+        <button class="btn" id="enableCoverageBtn" type="button"><i data-lucide="scan-eye"></i> Coverage</button>
+        <button class="btn" id="enableArrowsBtn" type="button"><i data-lucide="navigation"></i> ลูกศร</button>
+      </div>
+
+      <p class="source-note">
+        Public RainViewer tiles ใช้ขนาด 256 และ cache เฟรมใกล้เคียง เพื่อลดโอกาสโดน 429 จาก tile server บนมือถือและ GitHub Pages.
+      </p>
+    </div>
+  </dialog>
+
+  <dialog class="modal" id="forecastDialog">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <div>
+          <h2>พยากรณ์ฝนรายจุด</h2>
+          <p id="forecastSummary">เลือกจุดบนแผนที่เพื่อดู forecast รายชั่วโมง รายวัน และ alert watch</p>
+        </div>
+        <button class="icon-btn" type="button" data-close title="ปิด"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="tab-row" role="tablist" aria-label="Forecast tabs">
+        <button class="tab-btn active" data-tab="model72" type="button" role="tab">72 ชม.</button>
+        <button class="tab-btn" data-tab="hourly28" type="button" role="tab">28 ชม.</button>
+        <button class="tab-btn" data-tab="daily14" type="button" role="tab">14 วัน</button>
+        <button class="tab-btn" data-tab="alerts" type="button" role="tab">Storm</button>
+      </div>
+
+      <section class="forecast-pane active" id="model72">
+        <div class="model-chart" id="modelChart" aria-label="72 hour rain model chart"></div>
+        <div class="insight-list" id="insightList"></div>
+      </section>
+
+      <section class="forecast-pane" id="hourly28">
+        <div class="hour-list" id="hourList"></div>
+      </section>
+
+      <section class="forecast-pane" id="daily14">
+        <div class="daily-list" id="dailyList"></div>
+      </section>
+
+      <section class="forecast-pane" id="alerts">
+        <div class="button-row">
+          <button class="btn primary" id="enableNotifyBtn" type="button"><i data-lucide="bell-ring"></i> เปิดแจ้งเตือน</button>
+          <button class="btn" type="button" data-open="searchDialog"><i data-lucide="star"></i> เปิดสถานที่โปรด</button>
+        </div>
+        <div class="alert-list" id="alertList"></div>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog class="modal" id="featuresDialog">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <div>
+          <h2>ฟังก์ชันตาม RainViewer</h2>
+          <p>ย้ายมาไว้ใน popup เพื่อลดความรกบนแผนที่หลัก</p>
+        </div>
+        <button class="icon-btn" type="button" data-close title="ปิด"><i data-lucide="x"></i></button>
+      </div>
+      <div class="feature-list" id="featureList"></div>
+      <p class="source-note">
+        Radar data: <a href="https://www.rainviewer.com/api/weather-maps-api.html" target="_blank" rel="noreferrer">RainViewer API</a>.
+        Forecast data: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>.
+      </p>
+    </div>
+  </dialog>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    const RAINVIEWER_API = "https://api.rainviewer.com/public/weather-maps.json";
+    const OPEN_METEO_API = "https://api.open-meteo.com/v1/forecast";
+    const THAILAND_BOUNDS = [[5.45, 97.25], [20.75, 105.95]];
+    const DEFAULT_LOCATION = { name: "กรุงเทพมหานคร", lat: 13.7563, lon: 100.5018 };
+    const FAVORITE_KEY = "thai-rain-forecast-favorites-v1";
+    const THEME_KEY = "thai-rain-forecast-theme-v2";
+    const RADAR_TILE_SIZE = 256;
+    const RADAR_REFRESH_MS = 60 * 1000;
+    const ANIMATION_DELAY_MS = 650;
+    const RADAR_CACHE_LIMIT = 16;
+
+    const BASE_LAYERS = {
+      dark: {
+        url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        options: {
+          attribution: "&copy; OpenStreetMap &copy; CARTO",
+          maxZoom: 19,
+          subdomains: "abcd"
+        }
+      },
+      light: {
+        url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        options: {
+          attribution: "&copy; OpenStreetMap contributors",
+          maxZoom: 18
+        }
+      }
+    };
+
+    const THAI_PLACES = [
+      { name: "กรุงเทพมหานคร", lat: 13.7563, lon: 100.5018 },
+      { name: "นนทบุรี", lat: 13.8591, lon: 100.5217 },
+      { name: "ปทุมธานี", lat: 14.0208, lon: 100.5250 },
+      { name: "สมุทรปราการ", lat: 13.5991, lon: 100.5998 },
+      { name: "พระนครศรีอยุธยา", lat: 14.3532, lon: 100.5689 },
+      { name: "ชลบุรี", lat: 13.3611, lon: 100.9847 },
+      { name: "ระยอง", lat: 12.6814, lon: 101.2816 },
+      { name: "จันทบุรี", lat: 12.6113, lon: 102.1039 },
+      { name: "นครราชสีมา", lat: 14.9799, lon: 102.0977 },
+      { name: "ขอนแก่น", lat: 16.4419, lon: 102.8350 },
+      { name: "อุดรธานี", lat: 17.4138, lon: 102.7872 },
+      { name: "อุบลราชธานี", lat: 15.2448, lon: 104.8473 },
+      { name: "เชียงใหม่", lat: 18.7883, lon: 98.9853 },
+      { name: "เชียงราย", lat: 19.9105, lon: 99.8406 },
+      { name: "พิษณุโลก", lat: 16.8211, lon: 100.2659 },
+      { name: "นครสวรรค์", lat: 15.7047, lon: 100.1372 },
+      { name: "กาญจนบุรี", lat: 14.0228, lon: 99.5328 },
+      { name: "หัวหิน", lat: 12.5684, lon: 99.9577 },
+      { name: "สุราษฎร์ธานี", lat: 9.1382, lon: 99.3215 },
+      { name: "ภูเก็ต", lat: 7.8804, lon: 98.3923 },
+      { name: "กระบี่", lat: 8.0863, lon: 98.9063 },
+      { name: "หาดใหญ่", lat: 7.0086, lon: 100.4747 },
+      { name: "สงขลา", lat: 7.1898, lon: 100.5951 },
+      { name: "ยะลา", lat: 6.5411, lon: 101.2804 },
+      { name: "นราธิวาส", lat: 6.4255, lon: 101.8253 }
+    ];
+
+    const FEATURES = [
+      { icon: "cloud-rain", title: "การพยากรณ์เรดาร์ 2 ชั่วโมง", detail: "ใช้ RainViewer nowcast เมื่อ public feed ส่งเฟรมอนาคตมา ถ้าไม่มีจะแจ้งสถานะบน timeline", status: "warn", label: "บางช่วง" },
+      { icon: "history", title: "คลังเรดาร์ย้อนหลัง 48 ชั่วโมง", detail: "RainViewer public API ให้ย้อนหลังประมาณ 2 ชั่วโมง ส่วน 48 ชั่วโมงต้องใช้ endpoint ที่มีสิทธิ์", status: "lock", label: "ต้องใช้ API" },
+      { icon: "shield", title: "คลังเรดาร์ PRO 30 นาที", detail: "ข้อมูล PRO ไม่ได้อยู่ใน public API จึงซ่อนไว้เป็นสถานะสำหรับต่อ API ภายหลัง", status: "lock", label: "Pro" },
+      { icon: "cloud-sun", title: "การพยากรณ์โมเดล 72 ชั่วโมง", detail: "ดึง hourly precipitation และ probability จาก Open-Meteo สำหรับจุดที่เลือก", status: "ok", label: "พร้อม" },
+      { icon: "calendar-days", title: "รายชั่วโมง 28 ชั่วโมง & รายวัน 14 วัน", detail: "แสดง hourly 28 ชั่วโมงและ daily 14 วันใน popup พยากรณ์", status: "ok", label: "พร้อม" },
+      { icon: "star", title: "20 สถานที่โปรด", detail: "บันทึกใน localStorage ของเบราว์เซอร์นี้ สูงสุด 20 จุด", status: "ok", label: "พร้อม" },
+      { icon: "bell-ring", title: "การติดตามพายุและการแจ้งเตือน", detail: "Storm watch จาก probability, rain rate และ wind gust พร้อม browser notification เมื่ออนุญาต", status: "ok", label: "พร้อม" },
+      { icon: "mouse-pointer-click", title: "แตะที่ใดก็ได้เพื่อดูข้อมูล", detail: "คลิกหรือแตะบนแผนที่เพื่ออัปเดต forecast รายจุดทันที", status: "ok", label: "พร้อม" },
+      { icon: "navigation", title: "ลูกศรแสดงการเคลื่อนไหว", detail: "ลูกศรทิศทางลมจาก weather model ช่วยอ่านแนวเคลื่อนตัวของฝนใกล้จุดที่เลือก", status: "ok", label: "พร้อม" },
+      { icon: "sparkles", title: "ข้อมูลเชิงลึกสภาพอากาศด้วย AI", detail: "สรุป insight อัตโนมัติจากข้อมูล forecast แบบ rule-based ในไฟล์ HTML เดี่ยว", status: "ok", label: "พร้อม" },
+      { icon: "radar", title: "Live radar", detail: "ชั้นแผนที่ RainViewer ล่าสุด พร้อมปุ่ม refresh และ timeline animation", status: "ok", label: "พร้อม" }
+    ];
+
+    const state = {
+      map: null,
+      baseLayer: null,
+      radarApi: null,
+      radarLayer: null,
+      coverageLayer: null,
+      marker: null,
+      arrowLayer: null,
+      layerCache: new Map(),
+      frames: [],
+      frameIndex: 0,
+      playTimer: null,
+      lastFrameSignature: "",
+      isFrameLoading: false,
+      arrowsOn: false,
+      coverageOn: false,
+      selected: { ...DEFAULT_LOCATION },
+      forecast: null,
+      favorites: [],
+      favoriteRisks: new Map(),
+      theme: localStorage.getItem(THEME_KEY) || "dark"
+    };
+
+    const el = {
+      liveDot: document.getElementById("liveDot"),
+      statusText: document.getElementById("statusText"),
+      radarClock: document.getElementById("radarClock"),
+      radarFreshness: document.getElementById("radarFreshness"),
+      frameRange: document.getElementById("frameRange"),
+      frameLabel: document.getElementById("frameLabel"),
+      frameChips: document.getElementById("frameChips"),
+      selectedTitle: document.getElementById("selectedTitle"),
+      selectedCoords: document.getElementById("selectedCoords"),
+      weatherNow: document.getElementById("weatherNow"),
+      nowProb: document.getElementById("nowProb"),
+      nextRain: document.getElementById("nextRain"),
+      windInfo: document.getElementById("windInfo"),
+      stormLevel: document.getElementById("stormLevel"),
+      infographicDesc: document.getElementById("infographicDesc"),
+      infographicPanel: document.getElementById("infographicPanel"),
+      placeSearch: document.getElementById("placeSearch"),
+      thaiPlaces: document.getElementById("thaiPlaces"),
+      favoriteCount: document.getElementById("favoriteCount"),
+      favoriteList: document.getElementById("favoriteList"),
+      featureList: document.getElementById("featureList"),
+      forecastSummary: document.getElementById("forecastSummary"),
+      modelChart: document.getElementById("modelChart"),
+      insightList: document.getElementById("insightList"),
+      hourList: document.getElementById("hourList"),
+      dailyList: document.getElementById("dailyList"),
+      alertList: document.getElementById("alertList"),
+      colorScheme: document.getElementById("colorScheme"),
+      opacityRange: document.getElementById("opacityRange"),
+      themeToggleBtn: document.getElementById("themeToggleBtn")
+    };
+
+    document.addEventListener("DOMContentLoaded", init);
+
+    async function init() {
+      setTheme(state.theme, false);
+      if (window.lucide) window.lucide.createIcons();
+      renderPlaceOptions();
+      renderFeatures();
+      loadFavorites();
+      initMap();
+      bindEvents();
+      renderSelected();
+      renderFavorites();
+      setStatus("กำลังโหลด live radar...", false);
+      await Promise.allSettled([fetchRadar(), loadForecast(state.selected)]);
+      window.setInterval(() => fetchRadar({ silent: true }), RADAR_REFRESH_MS);
+    }
+
+    function initMap() {
+      state.map = L.map("map", {
+        attributionControl: true,
+        zoomControl: false,
+        maxBoundsViscosity: 0.6
+      }).setView([13.3, 101.0], 6);
+
+      applyBaseLayer();
+      L.control.zoom({ position: "bottomright" }).addTo(state.map);
+      state.map.fitBounds(THAILAND_BOUNDS, { padding: [18, 18] });
+
+      state.marker = L.marker([state.selected.lat, state.selected.lon], {
+        icon: makePinIcon()
+      }).addTo(state.map);
+
+      state.map.on("click", (event) => {
+        const { lat, lng } = event.latlng;
+        selectLocation({
+          name: "จุดที่เลือกบนแผนที่",
+          lat: roundCoord(lat),
+          lon: roundCoord(lng)
+        }, true);
+      });
+    }
+
+    function bindEvents() {
+      document.querySelectorAll("[data-open]").forEach((button) => {
+        button.addEventListener("click", () => openDialog(button.dataset.open));
+      });
+      document.querySelectorAll("[data-close]").forEach((button) => {
+        button.addEventListener("click", () => closeDialog(button.closest("dialog")));
+      });
+      document.querySelectorAll("dialog.modal").forEach((dialog) => {
+        dialog.addEventListener("click", (event) => {
+          if (event.target === dialog) closeDialog(dialog);
+        });
+      });
+
+      document.getElementById("goPlaceBtn").addEventListener("click", goToSearchedPlace);
+      document.getElementById("useGpsBtn").addEventListener("click", useCurrentPosition);
+      document.getElementById("saveFavoriteBtn").addEventListener("click", saveCurrentFavorite);
+      document.getElementById("refreshRadarBtn").addEventListener("click", fetchRadar);
+      document.getElementById("fitThailandBtn").addEventListener("click", () => state.map.fitBounds(THAILAND_BOUNDS, { padding: [18, 18] }));
+      document.getElementById("toggleArrowsBtn").addEventListener("click", toggleArrows);
+      document.getElementById("enableArrowsBtn").addEventListener("click", toggleArrows);
+      document.getElementById("toggleCoverageBtn").addEventListener("click", toggleCoverage);
+      document.getElementById("enableCoverageBtn").addEventListener("click", toggleCoverage);
+      document.getElementById("toggleInfoBtn").addEventListener("click", () => el.infographicPanel.classList.toggle("is-hidden"));
+      document.getElementById("playBtn").addEventListener("click", togglePlayback);
+      document.getElementById("stepBackBtn").addEventListener("click", () => setFrame(state.frameIndex - 1));
+      document.getElementById("stepForwardBtn").addEventListener("click", () => setFrame(state.frameIndex + 1));
+      document.getElementById("enableNotifyBtn").addEventListener("click", requestNotifications);
+      document.getElementById("scanFavoritesBtn").addEventListener("click", scanFavorites);
+      el.themeToggleBtn.addEventListener("click", () => setTheme(state.theme === "dark" ? "light" : "dark", true));
+      el.frameRange.addEventListener("input", (event) => setFrame(Number(event.target.value)));
+      el.colorScheme.addEventListener("change", () => {
+        clearRadarCache();
+        showFrame(state.frameIndex, { force: true });
+      });
+      el.opacityRange.addEventListener("input", () => {
+        if (state.radarLayer) state.radarLayer.setOpacity(Number(el.opacityRange.value) / 100);
+      });
+
+      document.querySelectorAll(".tab-btn").forEach((button) => {
+        button.addEventListener("click", () => activateTab(button.dataset.tab));
+      });
+
+      el.favoriteList.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        const index = Number(button.dataset.index);
+        const favorite = state.favorites[index];
+        if (!favorite) return;
+
+        if (button.dataset.action === "go") {
+          selectLocation(favorite, true);
+          closeDialog(document.getElementById("searchDialog"));
+        }
+
+        if (button.dataset.action === "remove") {
+          state.favorites.splice(index, 1);
+          persistFavorites();
+          renderFavorites();
+          setStatus("ลบสถานที่โปรดแล้ว", true);
+        }
+      });
+    }
+
+    function setTheme(theme, persist) {
+      state.theme = theme;
+      document.documentElement.dataset.theme = theme;
+      if (persist) localStorage.setItem(THEME_KEY, theme);
+      if (el.themeToggleBtn) {
+        el.themeToggleBtn.innerHTML = theme === "dark" ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>';
+      }
+      applyBaseLayer();
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function applyBaseLayer() {
+      if (!state.map) return;
+      if (state.baseLayer) state.map.removeLayer(state.baseLayer);
+      const base = BASE_LAYERS[state.theme] || BASE_LAYERS.dark;
+      state.baseLayer = L.tileLayer(base.url, base.options).addTo(state.map);
+      state.baseLayer.setZIndex(100);
+      if (state.radarLayer) state.radarLayer.bringToFront();
+    }
+
+    async function fetchRadar(options = {}) {
+      const { silent = false } = options;
+      try {
+        if (!silent) setStatus("กำลังอัปเดต live radar...", false);
+        const response = await fetch(`${RAINVIEWER_API}?_=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`RainViewer HTTP ${response.status}`);
+        const data = await response.json();
+        const past = Array.isArray(data.radar?.past) ? data.radar.past.map((frame) => ({ ...frame, kind: "past" })) : [];
+        const nowcast = Array.isArray(data.radar?.nowcast) ? data.radar.nowcast.map((frame) => ({ ...frame, kind: "nowcast" })) : [];
+        const frames = [...past, ...nowcast];
+        const signature = frames.map((frame) => frame.path).join("|");
+        const changed = signature && signature !== state.lastFrameSignature;
+
+        state.radarApi = data;
+        state.frames = frames;
+
+        if (!state.lastFrameSignature || changed) {
+          state.lastFrameSignature = signature;
+          state.frameIndex = Math.max(0, past.length - 1);
+          pruneRadarCache();
+          setupTimeline();
+          showFrame(state.frameIndex, { force: changed });
+        } else {
+          setupTimeline();
+          updateFrameLabel();
+        }
+
+        preloadNearbyFrames(state.frameIndex);
+
+        const generated = data.generated ? formatThaiDateTime(data.generated * 1000) : "ไม่ทราบเวลา";
+        const futureText = nowcast.length ? `มี nowcast ${nowcast.length} เฟรม` : "public feed ไม่มี nowcast ตอนนี้";
+        el.radarFreshness.textContent = `อัปเดต ${generated} · ${futureText}`;
+        setStatus(changed ? "Live radar อัปเดตแล้ว" : "Live radar พร้อม", true);
+      } catch (error) {
+        console.error(error);
+        if (!silent) setStatus("โหลด RainViewer ไม่สำเร็จ", false);
+        el.radarFreshness.textContent = "RainViewer ยังไม่พร้อมใช้งาน";
+      }
+    }
+
+    function setupTimeline() {
+      const max = Math.max(0, state.frames.length - 1);
+      el.frameRange.min = "0";
+      el.frameRange.max = String(max);
+      el.frameRange.value = String(state.frameIndex);
+
+      el.frameChips.innerHTML = state.frames
+        .filter((_, index) => state.frames.length <= 14 || index % 2 === 0 || index === state.frameIndex)
+        .map((frame) => {
+          const actualIndex = state.frames.indexOf(frame);
+          const active = actualIndex === state.frameIndex ? "active" : "";
+          const future = frame.kind === "nowcast" ? "future" : "";
+          const prefix = frame.kind === "nowcast" ? "+" : "";
+          return `<button class="frame-chip ${active} ${future}" type="button" data-frame="${actualIndex}">${prefix}${formatFrameTime(frame.time)}</button>`;
+        })
+        .join("");
+
+      el.frameChips.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => setFrame(Number(button.dataset.frame)));
+      });
+    }
+
+    function setFrame(index) {
+      if (!state.frames.length) return;
+      state.frameIndex = wrapFrameIndex(index);
+      el.frameRange.value = String(state.frameIndex);
+      showFrame(state.frameIndex);
+      setupTimeline();
+    }
+
+    function showFrame(index, options = {}) {
+      const { force = false } = options;
+      if (!state.map || !state.radarApi || !state.frames.length) return;
+      const frameIndex = wrapFrameIndex(index);
+      const frame = state.frames[frameIndex];
+      const cacheKey = radarCacheKey(frame);
+      const oldLayer = state.radarLayer;
+      const nextLayer = getRadarLayer(frame);
+
+      state.frameIndex = frameIndex;
+      el.frameRange.value = String(frameIndex);
+
+      if (nextLayer === oldLayer && !force) {
+        nextLayer.setOpacity(Number(el.opacityRange.value) / 100);
+        updateFrameLabel();
+        preloadNearbyFrames(frameIndex);
+        return;
+      }
+
+      if (!state.map.hasLayer(nextLayer)) {
+        nextLayer.addTo(state.map);
+      }
+
+      requestAnimationFrame(() => {
+        nextLayer.setOpacity(Number(el.opacityRange.value) / 100);
+        if (oldLayer && oldLayer !== nextLayer) {
+          oldLayer.setOpacity(0);
+        }
+      });
+
+      state.radarLayer = nextLayer;
+      updateFrameLabel();
+      preloadNearbyFrames(frameIndex);
+
+      window.setTimeout(() => {
+        if (oldLayer && oldLayer !== nextLayer && state.map.hasLayer(oldLayer)) {
+          state.map.removeLayer(oldLayer);
+        }
+      }, 520);
+      pruneRadarCache(cacheKey);
+    }
+
+    function getRadarLayer(frame) {
+      const cacheKey = radarCacheKey(frame);
+      if (state.layerCache.has(cacheKey)) return state.layerCache.get(cacheKey);
+      const color = el.colorScheme.value || "2";
+      const tileUrl = `${state.radarApi.host}${frame.path}/${RADAR_TILE_SIZE}/{z}/{x}/{y}/${color}/1_1.png`;
+      const layer = L.tileLayer(tileUrl, {
+        tileSize: 256,
+        opacity: 0,
+        zIndex: 450,
+        maxZoom: 10,
+        maxNativeZoom: 7,
+        keepBuffer: 2,
+        updateWhenIdle: true,
+        updateWhenZooming: false,
+        attribution: "Radar &copy; RainViewer"
+      });
+      layer.on("tileerror", () => {
+        setStatus("RainViewer tile ถูกจำกัดชั่วคราว", false);
+      });
+      state.layerCache.set(cacheKey, layer);
+      return layer;
+    }
+
+    function preloadNearbyFrames(index) {
+      if (!state.map || !state.frames.length) return;
+      [index - 1, index + 1].forEach((candidateIndex) => {
+        const frame = state.frames[wrapFrameIndex(candidateIndex)];
+        if (!frame) return;
+        const layer = getRadarLayer(frame);
+        if (!state.map.hasLayer(layer)) {
+          layer.addTo(state.map);
+          layer.setOpacity(0);
+        }
+      });
+    }
+
+    function updateFrameLabel() {
+      const frame = state.frames[state.frameIndex];
+      if (!frame) return;
+      const isNowcast = frame.kind === "nowcast";
+      const frameType = isNowcast ? "คาดการณ์เรดาร์" : "เรดาร์ live";
+      const time = formatThaiDateTime(frame.time * 1000);
+      el.radarClock.textContent = formatFrameTime(frame.time);
+      el.frameLabel.textContent = `${frameType} · ${time}`;
+
+      // Nowcast badge
+      const badge = document.getElementById("nowcastBadge");
+      const badgeText = document.getElementById("nowcastText");
+      if (badge && badgeText) {
+        const nowcastFrames = state.frames.filter(f => f.kind === "nowcast");
+        if (nowcastFrames.length) {
+          badge.style.display = "inline-flex";
+          if (isNowcast) {
+            const nowEpoch = Math.floor(Date.now() / 1000);
+            const minAhead = Math.round((frame.time - nowEpoch) / 60);
+            const label = minAhead >= 0 ? `+${minAhead} นาที` : `${minAhead} นาที`;
+            badgeText.textContent = `Nowcast ${label}`;
+            badge.classList.remove("inactive");
+          } else {
+            badgeText.textContent = `Nowcast พร้อม ${nowcastFrames.length} เฟรม`;
+            badge.classList.add("inactive");
+          }
+          if (window.lucide) window.lucide.createIcons();
+        } else {
+          badge.style.display = "none";
+        }
+      }
+    }
+
+    function wrapFrameIndex(index) {
+      if (!state.frames.length) return 0;
+      return ((index % state.frames.length) + state.frames.length) % state.frames.length;
+    }
+
+    function radarCacheKey(frame) {
+      return `${frame.path}|${el.colorScheme.value || "2"}|${RADAR_TILE_SIZE}`;
+    }
+
+    function clearRadarCache() {
+      state.layerCache.forEach((layer) => {
+        if (state.map?.hasLayer(layer)) state.map.removeLayer(layer);
+      });
+      state.layerCache.clear();
+      state.radarLayer = null;
+    }
+
+    function pruneRadarCache(keepKey = "") {
+      if (state.layerCache.size <= RADAR_CACHE_LIMIT) return;
+      const activePaths = new Set([
+        state.frames[wrapFrameIndex(state.frameIndex - 1)]?.path,
+        state.frames[wrapFrameIndex(state.frameIndex)]?.path,
+        state.frames[wrapFrameIndex(state.frameIndex + 1)]?.path
+      ].filter(Boolean));
+      state.layerCache.forEach((layer, key) => {
+        const path = key.split("|")[0];
+        if (key !== keepKey && !activePaths.has(path) && layer !== state.radarLayer) {
+          if (state.map?.hasLayer(layer)) state.map.removeLayer(layer);
+          state.layerCache.delete(key);
+        }
+      });
+    }
+
+    function toggleCoverage() {
+      state.coverageOn = !state.coverageOn;
+      if (!state.radarApi) return;
+      if (state.coverageLayer) {
+        state.map.removeLayer(state.coverageLayer);
+        state.coverageLayer = null;
+      }
+      if (state.coverageOn) {
+        state.coverageLayer = L.tileLayer(`${state.radarApi.host}/v2/coverage/0/${RADAR_TILE_SIZE}/{z}/{x}/{y}/0/0_0.png`, {
+          tileSize: 256,
+          opacity: 0.28,
+          zIndex: 430,
+          maxZoom: 10,
+          maxNativeZoom: 7,
+          keepBuffer: 2,
+          updateWhenIdle: true,
+          updateWhenZooming: false
+        }).addTo(state.map);
+        setStatus("เปิด coverage", true);
+      } else {
+        setStatus("ปิด coverage", true);
+      }
+    }
+
+    async function loadForecast(location) {
+      try {
+        setForecastLoading();
+        const params = new URLSearchParams({
+          latitude: String(location.lat),
+          longitude: String(location.lon),
+          timezone: "Asia/Bangkok",
+          forecast_days: "14",
+          forecast_hours: "72",
+          hourly: "temperature_2m,precipitation,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover",
+          daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max",
+          wind_speed_unit: "kmh",
+          precipitation_unit: "mm"
+        });
+        const response = await fetch(`${OPEN_METEO_API}?${params.toString()}`);
+        if (!response.ok) throw new Error(`Open-Meteo HTTP ${response.status}`);
+        state.forecast = await response.json();
+        renderForecast();
+        renderMovementArrows();
+      } catch (error) {
+        console.error(error);
+        el.forecastSummary.textContent = "โหลด forecast ไม่สำเร็จ ลองรีเฟรชหรือเลือกตำแหน่งใหม่";
+        el.modelChart.innerHTML = "";
+        el.hourList.innerHTML = "";
+        el.dailyList.innerHTML = "";
+        el.insightList.innerHTML = `<div class="alert-item warn"><h3>Forecast unavailable</h3><p>Open-Meteo ยังไม่ตอบกลับสำหรับจุดนี้</p></div>`;
+      }
+    }
+
+    function setForecastLoading() {
+      el.forecastSummary.textContent = `กำลังโหลด forecast สำหรับ ${state.selected.name}...`;
+      el.modelChart.innerHTML = `<p class="empty">กำลังโหลดกราฟ 72 ชั่วโมง</p>`;
+      el.hourList.innerHTML = `<p class="empty">กำลังโหลดรายชั่วโมง</p>`;
+      el.dailyList.innerHTML = `<p class="empty">กำลังโหลดรายวัน</p>`;
+      el.insightList.innerHTML = `<div class="insight-item"><div class="insight-icon"><i class="spinner" data-lucide="loader-2"></i></div><div><h3>กำลังอ่านข้อมูลฝน</h3><p>รอสักครู่</p></div></div>`;
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function renderForecast() {
+      const rows = getHourlyRows();
+      const daily = getDailyRows();
+      const next28 = rows.slice(0, 28);
+      const next72 = rows.slice(0, 72);
+      const next2 = rows.slice(0, 2);
+      const current = rows[0] || {};
+      const rain2 = next2.reduce((sum, item) => sum + (item.precipitation || 0), 0);
+      const max28 = maxValue(next28, "probability");
+
+      el.nowProb.textContent = Number.isFinite(current.probability) ? `${current.probability}%` : "--%";
+      el.nextRain.textContent = `${rain2.toFixed(1)} mm`;
+      el.windInfo.textContent = current.windSpeed ? `${Math.round(current.windSpeed)} km/h` : "--";
+      el.weatherNow.innerHTML = `<i data-lucide="cloud-rain"></i> ${weatherCodeLabel(current.weatherCode)}`;
+      el.forecastSummary.textContent = `${state.selected.name}: ${weatherCodeLabel(current.weatherCode)} · โอกาสฝนสูงสุด 28 ชม. ${max28}%`;
+
+      updateInfographic(next28, next72);
+      renderModelChart(next72);
+      renderHourly(next28);
+      renderDaily(daily);
+      renderInsights(next28, next72, daily);
+      renderAlerts(next28);
+      renderSelected();
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function updateInfographic(next28, next72) {
+      const wettest = [...next28].sort((a, b) => (b.probability || 0) - (a.probability || 0) || (b.precipitation || 0) - (a.precipitation || 0))[0];
+      const rain72 = next72.reduce((sum, item) => sum + (item.precipitation || 0), 0);
+      const maxProb = maxValue(next28, "probability");
+      const nowcastFrames = state.frames.filter(f => f.kind === "nowcast");
+      const level = maxProb >= 75 ? "เฝ้าระวังฝนหนัก" : maxProb >= 45 ? "มีโอกาสฝนเป็นช่วง" : "สัญญาณฝนยังต่ำ";
+      el.stormLevel.textContent = level;
+      const nowcastSuffix = nowcastFrames.length
+        ? ` · nowcast ${nowcastFrames.length * 10} นาที`
+        : "";
+      el.infographicDesc.textContent = wettest
+        ? `จุดพีค ${formatHour(wettest.time)} · ${wettest.probability}% · 72 ชม. ${rain72.toFixed(1)} mm${nowcastSuffix}`
+        : `แตะบนแผนที่เพื่อดูข้อมูลรายจุด${nowcastSuffix}`;
+    }
+
+    function renderModelChart(rows) {
+      const compact = rows.filter((_, index) => index % 2 === 0).slice(0, 36);
+      el.modelChart.innerHTML = compact.map((item) => {
+        const value = Math.max(item.probability || 0, Math.min(100, (item.precipitation || 0) * 18));
+        const height = Math.max(4, value * 1.28);
+        const hot = (item.probability || 0) >= 70 || (item.precipitation || 0) >= 8 ? "hot" : "";
+        const tip = `${formatHour(item.time)} · ${item.probability || 0}% · ${(item.precipitation || 0).toFixed(1)} mm`;
+        return `<div class="bar ${hot}" style="height:${height}px" title="${tip}"></div>`;
+      }).join("");
+    }
+
+    function renderHourly(rows) {
+      el.hourList.innerHTML = rows.map((item) => {
+        const prob = item.probability ?? 0;
+        const rain = item.precipitation ?? 0;
+        const wind = item.windSpeed ?? 0;
+        return `
+          <div class="hour-row">
+            <div><h3>${formatHour(item.time)}</h3><p>${formatShortDate(item.time)}</p></div>
+            <div>
+              <h3>${weatherCodeLabel(item.weatherCode)}</h3>
+              <p>${rain.toFixed(1)} mm · ลม ${Math.round(wind)} km/h · เมฆ ${item.cloudCover ?? "--"}%</p>
+              <div class="rain-meter" aria-hidden="true"><i style="width:${Math.min(prob, 100)}%"></i></div>
+            </div>
+            <div class="prob">${prob}%</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderDaily(rows) {
+      el.dailyList.innerHTML = rows.slice(0, 14).map((item) => {
+        const prob = item.probability ?? 0;
+        const rain = item.precipitation ?? 0;
+        return `
+          <div class="daily-row">
+            <div><h3>${formatDay(item.time)}</h3><p>${formatShortDate(item.time)}</p></div>
+            <div>
+              <h3>${weatherCodeLabel(item.weatherCode)}</h3>
+              <p>ฝนรวม ${rain.toFixed(1)} mm · ${Math.round(item.tempMin)}-${Math.round(item.tempMax)}°C · gust ${Math.round(item.windGust || 0)} km/h</p>
+              <div class="rain-meter" aria-hidden="true"><i style="width:${Math.min(prob, 100)}%"></i></div>
+            </div>
+            <div class="prob">${prob}%</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderInsights(next28, next72, daily) {
+      const wettest = [...next28].sort((a, b) => (b.probability || 0) - (a.probability || 0) || (b.precipitation || 0) - (a.precipitation || 0))[0];
+      const rain28 = next28.reduce((sum, item) => sum + (item.precipitation || 0), 0);
+      const rain72 = next72.reduce((sum, item) => sum + (item.precipitation || 0), 0);
+      const maxProb = maxValue(next28, "probability");
+      const worstDay = [...daily].sort((a, b) => (b.precipitation || 0) - (a.precipitation || 0))[0];
+      const tone = maxProb >= 75 || rain28 >= 20 ? "ระวังฝนหนัก" : maxProb >= 45 ? "มีโอกาสฝนเป็นช่วง" : "โอกาสฝนไม่สูง";
+      const advice = maxProb >= 75
+        ? "ควรเผื่อเวลาเดินทางและเช็กเรดาร์ก่อนออกจากบ้าน"
+        : maxProb >= 45
+          ? "พกร่มหรือวางกิจกรรมกลางแจ้งไว้ช่วงที่ probability ต่ำกว่า"
+          : "ยังพอเหมาะกับกิจกรรมกลางแจ้ง แต่ควรดูเรดาร์ live ก่อนออกเดินทาง";
+
+      el.insightList.innerHTML = `
+        <div class="insight-item">
+          <div class="insight-icon"><i data-lucide="sparkles"></i></div>
+          <div><h3>${tone}</h3><p>${advice}</p></div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-icon"><i data-lucide="clock-3"></i></div>
+          <div><h3>ช่วงน่าจับตา: ${wettest ? formatHour(wettest.time) : "--"}</h3><p>โอกาสฝน ${wettest?.probability ?? "--"}% · ปริมาณ ${((wettest?.precipitation) || 0).toFixed(1)} mm</p></div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-icon"><i data-lucide="cloud-drizzle"></i></div>
+          <div><h3>ฝนสะสม 28 ชม. ${rain28.toFixed(1)} mm · 72 ชม. ${rain72.toFixed(1)} mm</h3><p>วันที่ฝนเด่นสุด: ${worstDay ? `${formatDay(worstDay.time)} ${((worstDay.precipitation) || 0).toFixed(1)} mm` : "--"}</p></div>
+        </div>
+      `;
+    }
+
+    function renderAlerts(rows) {
+      const alerts = buildAlertsForRows(rows, state.selected.name);
+      el.alertList.innerHTML = alerts.map(alertTemplate).join("");
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function buildAlertsForRows(rows, name) {
+      const next12 = rows.slice(0, 12);
+      const heavy = next12.find((item) => (item.probability || 0) >= 75 || (item.precipitation || 0) >= 8);
+      const gust = next12.find((item) => (item.windGust || 0) >= 45);
+      const rainTotal = next12.reduce((sum, item) => sum + (item.precipitation || 0), 0);
+      if (heavy) {
+        return [{
+          level: "danger",
+          title: `${name}: มีสัญญาณฝนหนัก`,
+          detail: `${formatHour(heavy.time)} probability ${heavy.probability}% / ${heavy.precipitation.toFixed(1)} mm. ฝนสะสม 12 ชม. ${rainTotal.toFixed(1)} mm`
+        }, ...(gust ? [{
+          level: "warn",
+          title: "ลมกระโชกแรงร่วม",
+          detail: `${formatHour(gust.time)} gust ${Math.round(gust.windGust)} km/h`
+        }] : [])];
+      }
+      if (rainTotal >= 10 || maxValue(next12, "probability") >= 50) {
+        return [{
+          level: "warn",
+          title: `${name}: ฝนเป็นช่วงใน 12 ชั่วโมง`,
+          detail: `โอกาสฝนสูงสุด ${maxValue(next12, "probability")}% · ฝนสะสม ${rainTotal.toFixed(1)} mm`
+        }];
+      }
+      return [{
+        level: "ok",
+        title: `${name}: ยังไม่มีสัญญาณฝนหนัก`,
+        detail: `ฝนสะสม 12 ชม. ${rainTotal.toFixed(1)} mm · โอกาสฝนสูงสุด ${maxValue(next12, "probability")}%`
+      }];
+    }
+
+    function alertTemplate(alert) {
+      const icon = alert.level === "danger" ? "triangle-alert" : alert.level === "warn" ? "cloud-lightning" : "circle-check";
+      const className = alert.level === "danger" ? "danger" : alert.level === "warn" ? "warn" : "";
+      return `<div class="alert-item ${className}"><h3><i data-lucide="${icon}"></i> ${alert.title}</h3><p>${alert.detail}</p></div>`;
+    }
+
+    async function scanFavorites() {
+      if (!state.favorites.length) {
+        el.alertList.innerHTML = `<div class="alert-item warn"><h3>ยังไม่มีสถานที่โปรด</h3><p>บันทึกได้สูงสุด 20 จุดก่อนเริ่มตรวจ storm watch</p></div>`;
+        openDialog("forecastDialog");
+        activateTab("alerts");
+        return;
+      }
+
+      setStatus("กำลังตรวจ storm watch...", false);
+      const results = await Promise.allSettled(state.favorites.map(fetchBriefForecast));
+      const alerts = [];
+      state.favoriteRisks.clear();
+
+      results.forEach((result, index) => {
+        const favorite = state.favorites[index];
+        if (result.status === "fulfilled") {
+          const built = buildAlertsForRows(result.value, favorite.name)[0];
+          alerts.push(built);
+          state.favoriteRisks.set(favoriteKey(favorite), built.level);
+        } else {
+          alerts.push({ level: "warn", title: `${favorite.name}: โหลดข้อมูลไม่ได้`, detail: "Open-Meteo ไม่ตอบกลับสำหรับจุดนี้" });
+          state.favoriteRisks.set(favoriteKey(favorite), "warn");
+        }
+      });
+
+      renderFavorites();
+      el.alertList.innerHTML = alerts.map(alertTemplate).join("");
+      maybeNotify(alerts);
+      setStatus("ตรวจ Storm เสร็จแล้ว", true);
+      openDialog("forecastDialog");
+      activateTab("alerts");
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    async function fetchBriefForecast(location) {
+      const params = new URLSearchParams({
+        latitude: String(location.lat),
+        longitude: String(location.lon),
+        timezone: "Asia/Bangkok",
+        forecast_hours: "12",
+        hourly: "precipitation,precipitation_probability,weather_code,wind_gusts_10m",
+        wind_speed_unit: "kmh",
+        precipitation_unit: "mm"
+      });
+      const response = await fetch(`${OPEN_METEO_API}?${params.toString()}`);
+      if (!response.ok) throw new Error("forecast failed");
+      const data = await response.json();
+      return data.hourly.time.map((time, index) => ({
+        time,
+        precipitation: data.hourly.precipitation?.[index] ?? 0,
+        probability: data.hourly.precipitation_probability?.[index] ?? 0,
+        weatherCode: data.hourly.weather_code?.[index] ?? 0,
+        windGust: data.hourly.wind_gusts_10m?.[index] ?? 0
+      }));
+    }
+
+    function maybeNotify(alerts) {
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      const danger = alerts.find((alert) => alert.level === "danger");
+      if (danger) {
+        new Notification("Thailand Rain Forecast", {
+          body: `${danger.title} · ${danger.detail}`
+        });
+      }
+    }
+
+    async function requestNotifications() {
+      if (!("Notification" in window)) {
+        setStatus("เบราว์เซอร์นี้ไม่รองรับ notification", false);
+        return;
+      }
+      try {
+        const result = await Notification.requestPermission();
+        setStatus(result === "granted" ? "เปิด notification แล้ว" : "ยังไม่ได้อนุญาต notification", result === "granted");
+      } catch (error) {
+        setStatus("เปิด notification ไม่สำเร็จ", false);
+      }
+    }
+
+    function selectLocation(location, moveMap) {
+      state.selected = { ...location, lat: roundCoord(location.lat), lon: roundCoord(location.lon) };
+      renderSelected();
+      if (state.marker) state.marker.setLatLng([state.selected.lat, state.selected.lon]);
+      if (moveMap) state.map.setView([state.selected.lat, state.selected.lon], Math.max(state.map.getZoom(), 8), { animate: true });
+      loadForecast(state.selected);
+    }
+
+    function renderSelected() {
+      el.selectedTitle.textContent = state.selected.name;
+      el.selectedCoords.textContent = `${state.selected.lat.toFixed(4)}, ${state.selected.lon.toFixed(4)}`;
+    }
+
+    function goToSearchedPlace() {
+      const query = normalizeThai(el.placeSearch.value);
+      if (!query) return;
+      const found = THAI_PLACES.find((place) => normalizeThai(place.name) === query)
+        || THAI_PLACES.find((place) => normalizeThai(place.name).includes(query) || query.includes(normalizeThai(place.name)));
+      if (!found) {
+        setStatus("ไม่พบชื่อเมือง ลองแตะบนแผนที่", false);
+        return;
+      }
+      selectLocation(found, true);
+      setStatus(`ไปยัง ${found.name}`, true);
+    }
+
+    function useCurrentPosition() {
+      if (!navigator.geolocation) {
+        setStatus("เบราว์เซอร์นี้ไม่รองรับ geolocation", false);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition((position) => {
+        selectLocation({
+          name: "ตำแหน่งปัจจุบัน",
+          lat: position.coords.latitude,
+          lon: position.coords.longitude
+        }, true);
+      }, () => {
+        setStatus("ไม่สามารถอ่านตำแหน่งปัจจุบันได้", false);
+      }, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      });
+    }
+
+    function saveCurrentFavorite() {
+      if (state.favorites.length >= 20) {
+        setStatus("สถานที่โปรดครบ 20 จุดแล้ว", false);
+        return;
+      }
+      const key = favoriteKey(state.selected);
+      if (state.favorites.some((item) => favoriteKey(item) === key)) {
+        setStatus("จุดนี้อยู่ในสถานที่โปรดแล้ว", false);
+        return;
+      }
+      state.favorites.push({ ...state.selected });
+      persistFavorites();
+      renderFavorites();
+      setStatus(`บันทึก ${state.selected.name} แล้ว`, true);
+    }
+
+    function loadFavorites() {
+      try {
+        const raw = localStorage.getItem(FAVORITE_KEY);
+        state.favorites = raw ? JSON.parse(raw) : [];
+      } catch {
+        state.favorites = [];
+      }
+    }
+
+    function persistFavorites() {
+      localStorage.setItem(FAVORITE_KEY, JSON.stringify(state.favorites.slice(0, 20)));
+    }
+
+    function renderFavorites() {
+      el.favoriteCount.textContent = `${state.favorites.length} / 20`;
+      if (!state.favorites.length) {
+        el.favoriteList.innerHTML = `<p class="empty">ยังไม่มีสถานที่โปรด แตะบนแผนที่หรือเลือกเมืองแล้วกดบันทึก</p>`;
+        return;
+      }
+
+      el.favoriteList.innerHTML = state.favorites.map((favorite, index) => {
+        const risk = state.favoriteRisks.get(favoriteKey(favorite));
+        const badge = risk ? `<span class="badge ${risk === "danger" ? "danger" : risk === "warn" ? "warn" : "ok"}">${risk === "danger" ? "เสี่ยงสูง" : risk === "warn" ? "จับตา" : "ปกติ"}</span>` : `<span aria-hidden="true"></span>`;
+        return `
+          <div class="favorite-item">
+            <div class="favorite-meta">
+              <h3>${favorite.name}</h3>
+              <p>${favorite.lat.toFixed(3)}, ${favorite.lon.toFixed(3)}</p>
+            </div>
+            ${badge}
+            <button class="icon-btn" type="button" data-action="go" data-index="${index}" title="เปิดจุดนี้"><i data-lucide="map-pin"></i></button>
+            <button class="icon-btn btn danger" type="button" data-action="remove" data-index="${index}" title="ลบ"><i data-lucide="x"></i></button>
+          </div>
+        `;
+      }).join("");
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function renderPlaceOptions() {
+      el.thaiPlaces.innerHTML = THAI_PLACES.map((place) => `<option value="${place.name}"></option>`).join("");
+    }
+
+    function renderFeatures() {
+      el.featureList.innerHTML = FEATURES.map((feature) => `
+        <div class="feature-item">
+          <div class="feature-icon"><i data-lucide="${feature.icon}"></i></div>
+          <div>
+            <h3>${feature.title}</h3>
+            <p>${feature.detail}</p>
+          </div>
+          <span class="badge ${feature.status}">${feature.label}</span>
+        </div>
+      `).join("");
+    }
+
+    function activateTab(tabId) {
+      document.querySelectorAll(".tab-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.tab === tabId);
+      });
+      document.querySelectorAll(".forecast-pane").forEach((pane) => {
+        pane.classList.toggle("active", pane.id === tabId);
+      });
+    }
+
+    function togglePlayback() {
+      if (state.playTimer) {
+        window.clearTimeout(state.playTimer);
+        state.playTimer = null;
+        document.getElementById("playBtn").innerHTML = `<i data-lucide="play"></i>`;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+      }
+      const playNextFrame = () => {
+        if (!state.frames.length) return;
+        setFrame((state.frameIndex + 1) % state.frames.length);
+        state.playTimer = window.setTimeout(playNextFrame, ANIMATION_DELAY_MS);
+      };
+      document.getElementById("playBtn").innerHTML = `<i data-lucide="pause"></i>`;
+      if (window.lucide) window.lucide.createIcons();
+      playNextFrame();
+    }
+
+    function toggleArrows() {
+      state.arrowsOn = !state.arrowsOn;
+      renderMovementArrows();
+      setStatus(state.arrowsOn ? "เปิดลูกศรทิศทางลม" : "ปิดลูกศรทิศทางลม", true);
+    }
+
+    function renderMovementArrows() {
+      if (!state.map) return;
+      if (state.arrowLayer) {
+        state.map.removeLayer(state.arrowLayer);
+        state.arrowLayer = null;
+      }
+      if (!state.arrowsOn || !state.forecast) return;
+
+      const current = getHourlyRows()[0];
+      const direction = current?.windDirection ?? 180;
+      const icon = L.divIcon({
+        className: "",
+        html: `<div class="rain-arrow" style="transform: rotate(${direction}deg)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg></div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
+      const points = [
+        [state.selected.lat, state.selected.lon],
+        [state.selected.lat + 0.38, state.selected.lon - 0.48],
+        [state.selected.lat - 0.32, state.selected.lon + 0.52]
+      ];
+      state.arrowLayer = L.layerGroup(points.map((point) => L.marker(point, { icon }))).addTo(state.map);
+    }
+
+    function getHourlyRows() {
+      const hourly = state.forecast?.hourly;
+      if (!hourly?.time) return [];
+      return hourly.time.map((time, index) => ({
+        time,
+        temperature: hourly.temperature_2m?.[index],
+        precipitation: hourly.precipitation?.[index] ?? 0,
+        probability: hourly.precipitation_probability?.[index] ?? 0,
+        weatherCode: hourly.weather_code?.[index] ?? 0,
+        windSpeed: hourly.wind_speed_10m?.[index] ?? 0,
+        windDirection: hourly.wind_direction_10m?.[index] ?? 0,
+        windGust: hourly.wind_gusts_10m?.[index] ?? 0,
+        cloudCover: hourly.cloud_cover?.[index] ?? 0
+      }));
+    }
+
+    function getDailyRows() {
+      const daily = state.forecast?.daily;
+      if (!daily?.time) return [];
+      return daily.time.map((time, index) => ({
+        time,
+        weatherCode: daily.weather_code?.[index] ?? 0,
+        tempMax: daily.temperature_2m_max?.[index] ?? 0,
+        tempMin: daily.temperature_2m_min?.[index] ?? 0,
+        precipitation: daily.precipitation_sum?.[index] ?? 0,
+        probability: daily.precipitation_probability_max?.[index] ?? 0,
+        windGust: daily.wind_gusts_10m_max?.[index] ?? 0
+      }));
+    }
+
+    function makePinIcon() {
+      return L.divIcon({
+        className: "",
+        html: `<div class="location-pin"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.99-5.55 10.09-7.4 11.68a1 1 0 0 1-1.2 0C9.55 20.09 4 14.99 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle></svg></div>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13]
+      });
+    }
+
+    function openDialog(id) {
+      const dialog = document.getElementById(id);
+      if (!dialog) return;
+      document.querySelectorAll("dialog.modal[open]").forEach((openDialogNode) => {
+        if (openDialogNode !== dialog) closeDialog(openDialogNode);
+      });
+      if (typeof dialog.showModal === "function" && !dialog.open) {
+        try {
+          dialog.showModal();
+        } catch (error) {
+          dialog.setAttribute("open", "");
+        }
+      } else {
+        dialog.setAttribute("open", "");
+      }
+    }
+
+    function closeDialog(dialog) {
+      if (!dialog) return;
+      if (typeof dialog.close === "function") dialog.close();
+      else dialog.removeAttribute("open");
+    }
+
+    function setStatus(text, live) {
+      el.statusText.textContent = text;
+      el.liveDot.classList.toggle("live", Boolean(live));
+    }
+
+    function weatherCodeLabel(code) {
+      const labels = {
+        0: "ฟ้าโปร่ง",
+        1: "เมฆบางส่วน",
+        2: "เมฆเป็นส่วนมาก",
+        3: "เมฆมาก",
+        45: "หมอก",
+        48: "หมอกน้ำค้างแข็ง",
+        51: "ฝนปรอยอ่อน",
+        53: "ฝนปรอยปานกลาง",
+        55: "ฝนปรอยหนัก",
+        61: "ฝนอ่อน",
+        63: "ฝนปานกลาง",
+        65: "ฝนหนัก",
+        80: "ฝนซู่ซ่าอ่อน",
+        81: "ฝนซู่ซ่าปานกลาง",
+        82: "ฝนซู่ซ่าหนัก",
+        95: "พายุฝนฟ้าคะนอง",
+        96: "พายุฝนและลูกเห็บ",
+        99: "พายุฝนรุนแรง"
+      };
+      return labels[code] || "สภาพอากาศแปรปรวน";
+    }
+
+    function maxValue(rows, field) {
+      return rows.reduce((max, row) => Math.max(max, Number(row[field]) || 0), 0);
+    }
+
+    function formatFrameTime(timestamp) {
+      return new Intl.DateTimeFormat("th-TH", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Bangkok"
+      }).format(new Date(timestamp * 1000));
+    }
+
+    function formatThaiDateTime(value) {
+      return new Intl.DateTimeFormat("th-TH", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Bangkok"
+      }).format(new Date(value));
+    }
+
+    function formatHour(value) {
+      return new Intl.DateTimeFormat("th-TH", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Bangkok"
+      }).format(new Date(value));
+    }
+
+    function formatShortDate(value) {
+      return new Intl.DateTimeFormat("th-TH", {
+        day: "2-digit",
+        month: "short",
+        timeZone: "Asia/Bangkok"
+      }).format(new Date(value));
+    }
+
+    function formatDay(value) {
+      return new Intl.DateTimeFormat("th-TH", {
+        weekday: "short",
+        timeZone: "Asia/Bangkok"
+      }).format(new Date(value));
+    }
+
+    function roundCoord(value) {
+      return Math.round(Number(value) * 10000) / 10000;
+    }
+
+    function favoriteKey(location) {
+      return `${roundCoord(location.lat)},${roundCoord(location.lon)}`;
+    }
+
+    function normalizeThai(value) {
+      return String(value || "").trim().toLocaleLowerCase("th-TH").replace(/\s+/g, "");
+    }
+  </script>
+</body>
+</html>
